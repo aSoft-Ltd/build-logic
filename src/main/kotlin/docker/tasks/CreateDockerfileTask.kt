@@ -1,7 +1,5 @@
 package docker.tasks
 
-import docker.DockerfileBuilder
-import java.io.File
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.Property
@@ -20,11 +18,5 @@ abstract class CreateDockerfileTask : DefaultTask() {
     @TaskAction
     fun create() {
         directory.file("Dockerfile").get().asFile.writeText(rawDockerText.get())
-//        File(directory.get(), "Dockerfile").apply {
-//            if (!exists()) createNewFile()
-//        }.apply {
-//            val text = DockerfileBuilder().apply(builder).text.toString()
-//            writeText(text)
-//        }
     }
 }

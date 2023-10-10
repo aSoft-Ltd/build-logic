@@ -35,6 +35,11 @@ open class DockateExtension {
             dependsOn(stop)
         }
 
+        val restart = tasks.register("restart${name.capitalized()}Container") {
+            dependsOn(remove)
+            finalizedBy(run)
+        }
+
         return listOf(run, stop, remove)
     }
 

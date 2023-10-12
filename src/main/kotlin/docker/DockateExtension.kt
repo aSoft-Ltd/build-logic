@@ -1,12 +1,12 @@
 package docker
 
+import docker.builders.DockerComposeFileBuilder
+import docker.builders.DockerfileBuilder
+import docker.tasks.CreateDockerComposeFileTask
 import docker.tasks.CreateDockerfileTask
-import docker.tasks.DockerNetwork
-import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.file.Directory
-import org.gradle.api.provider.Property
 import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.Exec
 import org.gradle.api.tasks.TaskProvider
@@ -43,35 +43,6 @@ open class DockateExtension {
         return listOf(run, stop, remove)
     }
 
-    fun Project.createNetwork(name: String) = DockerNetwork(
-        name = name,
-        task = tasks.register<Exec>("createDockerNetwork") {
-            commandLine("docker", "network", "create", name)
-        }
-    )
-
-    fun Project.remove(network: DockerNetwork) = tasks.register<Exec>("removeDockerNetwork") {
-        commandLine("docker", "network", "remove", network.name)
-    }
-
-    fun Project.addDockerContainerTasksForMongo(
-        name: String = "mongo",
-        image: String = "mongo:latest",
-        network: DockerNetwork? = null,
-        port: Int,
-        username: String,
-        password: String
-    ) = addDockerContainerTasksFor(
-        name = name,
-        image = image,
-        network = network,
-        args = arrayOf(
-            "-p", "27017:$port",
-            "-e", "MONGODB_INITDB_ROOT_USERNAME=$username",
-            "-e", "MONGODB_INITDB_ROOT_PASSWORD=$password"
-        )
-    )
-
     fun Project.addDockerImageTasksFor(name: String, tag: String, directory: Provider<Directory>, builder: DockerfileBuilder.() -> Unit): List<TaskProvider<out Task>> {
         val create = tasks.register<CreateDockerfileTask>("create${name.capitalized()}Dockerfile") {
             this.directory.set(directory)
@@ -92,13 +63,46 @@ open class DockateExtension {
 
     fun Project.addDockerImageTasksForJvmApp(
         name: String = "app",
-        image: String = name,
-        port: Int,
-        directory: Provider<Directory>
-    ) = addDockerImageTasksFor(name = name, tag = image, directory) {
-        from("openjdk:22-jdk-slim")
-        expose(port)
-        copy(".", "/app")
-        cmd("/app/bin/${this@addDockerImageTasksForJvmApp.name}")
+        from: String = "openjdk:22-jdk-slim",
+        image: String = "${this.name}:${this.version}",
+        directory: Provider<Directory> = layout.buildDirectory.dir("install/${this.name}"),
+        port: Int
+    ): List<TaskProvider<out Task>> {
+        val dockerTasks = addDockerImageTasksFor(name = name, tag = image, directory) {
+            from(from)
+            expose(port)
+            copy(".", "/app")
+            cmd("/app/bin/${this@addDockerImageTasksForJvmApp.name}")
+        }
+
+        val (createDockerfile, buildAppImage) = dockerTasks
+        createDockerfile.configure { dependsOn(tasks.named("installDist")) }
+        buildAppImage.configure { dependsOn(createDockerfile) }
+        return dockerTasks
+    }
+
+    fun Project.dockerCompose(
+        directory: Provider<Directory> = layout.buildDirectory.dir("install/$name"),
+        builder: DockerComposeFileBuilder.() -> Unit
+    ) {
+        for (conf in listOf("", "Test")) {
+            val create = tasks.register<CreateDockerComposeFileTask>("createDockerComposeFile$conf") {
+                tasks.findByName("createAppDockerfile")?.let { dependsOn(it) }
+                this.directory.set(directory)
+                this.rawDockerComposeText.set(DockerComposeFileBuilder(externalVolumes = conf != "Test").apply(builder).build())
+            }
+
+            val down = tasks.register<Exec>("dockerComposeDown$conf") {
+                dependsOn(create)
+                workingDir(directory)
+                commandLine("docker", "compose", "down")
+            }
+
+            val up = tasks.register<Exec>("dockerComposeUp$conf") {
+                dependsOn(create)
+                workingDir(create.flatMap { it.directory })
+                commandLine("docker", "compose", "up", "-d")
+            }
+        }
     }
 }

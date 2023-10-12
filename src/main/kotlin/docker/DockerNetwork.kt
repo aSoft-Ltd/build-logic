@@ -1,4 +1,4 @@
-package docker.tasks
+package docker
 
 import org.gradle.api.tasks.Exec
 import org.gradle.api.tasks.TaskProvider

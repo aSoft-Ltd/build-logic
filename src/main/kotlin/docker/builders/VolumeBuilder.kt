@@ -1,19 +1,18 @@
 package docker.builders
 
-class VolumeBuilder(name: String) {
+import docker.DockerEnvironment
 
-    internal val volume = Volume(name, external = false)
+class VolumeBuilder(name: String, environment: DockerEnvironment) {
 
-    fun external(value: Boolean = true) {
-        volume.external = value
-    }
+    internal val volume = Volume(name + if (environment == DockerEnvironment.Test) "-test" else "")
 
-    class Volume internal constructor(val name: String, var external: Boolean) {
-        internal fun toLines(tab: String, externalVolume: Boolean) = listOf(
+    class Volume internal constructor(val name: String) {
+        internal fun toLines(tab: String) = listOf(
             "$tab$name:",
             "$tab${tab}name: $name",
-            "$tab${tab}external: ${external && externalVolume}"
+            "$tab${tab}external: true"
         )
 
+        override fun toString() = name
     }
 }

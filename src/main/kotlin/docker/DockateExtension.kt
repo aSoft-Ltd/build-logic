@@ -61,6 +61,8 @@ open class DockateExtension {
         return listOf(create, build, remove)
     }
 
+    private fun String.taskify() = split("-").joinToString("") { it.capitalized() }
+
     fun Project.addDockerImageTasksForJvmApp(
         name: String = "app",
         from: String = "openjdk:22-jdk-slim",
@@ -71,7 +73,9 @@ open class DockateExtension {
         val dockerTasks = addDockerImageTasksFor(name = name, tag = image, directory) {
             from(from)
             expose(port)
-            copy(".", "/app")
+            copy("bin", "/app/bin")
+            copy("lib", "/app/lib")
+            volume("/app/root")
             cmd("/app/bin/${this@addDockerImageTasksForJvmApp.name}")
         }
 
@@ -86,22 +90,43 @@ open class DockateExtension {
         builder: DockerComposeFileBuilder.() -> Unit
     ) {
         for (conf in listOf("", "Test")) {
+            val env = if (conf == "Test") DockerEnvironment.Test else DockerEnvironment.Prod
+            val dcf = DockerComposeFileBuilder(env).apply(builder)
+            val volumeTasks = dcf.configuredVolumes.map {
+                val dvc = tasks.register<Exec>("dockerVolumeCreate${it.name.taskify()}") {
+                    commandLine("docker", "volume", "create", it.name)
+                }
+                val dvr = tasks.register<Exec>("dockerVolumeRemove${it.name.taskify()}") {
+                    commandLine("docker", "volume", "rm", it.name)
+                }
+                dvc to dvr
+            }
+
             val create = tasks.register<CreateDockerComposeFileTask>("createDockerComposeFile$conf") {
                 tasks.findByName("createAppDockerfile")?.let { dependsOn(it) }
                 this.directory.set(directory)
-                this.rawDockerComposeText.set(DockerComposeFileBuilder(externalVolumes = conf != "Test").apply(builder).build())
+                this.rawDockerComposeText.set(dcf.build())
             }
+
+            val prune = if (env == DockerEnvironment.Test) tasks.register<Exec>("dockerSystemPrune") {
+                commandLine("docker", "system", "prune", "--volumes", "-f")
+            } else null
 
             val down = tasks.register<Exec>("dockerComposeDown$conf") {
                 dependsOn(create)
+                if (env == DockerEnvironment.Test) {
+                    volumeTasks.forEach { (_, dvr) -> finalizedBy(dvr) }
+                    finalizedBy(prune)
+                }
                 workingDir(directory)
                 commandLine("docker", "compose", "down")
             }
 
             val up = tasks.register<Exec>("dockerComposeUp$conf") {
                 dependsOn(create)
+                volumeTasks.forEach { (dvc, _) -> dependsOn(dvc) }
                 workingDir(create.flatMap { it.directory })
-                commandLine("docker", "compose", "up", "--renew-anon-volumes")
+                commandLine("docker", "compose", "up", "-d", "--renew-anon-volumes")
             }
         }
     }

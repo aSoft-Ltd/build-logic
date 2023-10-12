@@ -1,11 +1,13 @@
 package docker.builders
 
-class DockerComposeFileBuilder(private val externalVolumes: Boolean) {
+import docker.DockerEnvironment
+
+class DockerComposeFileBuilder(private val environment: DockerEnvironment) {
     private val lines = mutableListOf<String>()
 
     private val tab = "  "
 
-    private val configuredVolumes = mutableListOf<VolumeBuilder.Volume>()
+    internal val configuredVolumes = mutableListOf<VolumeBuilder.Volume>()
     fun version(value: Double) = lines.add("""version: "$value"""")
 
     fun services(builder: ServicesBuilder.() -> Unit) {
@@ -15,13 +17,13 @@ class DockerComposeFileBuilder(private val externalVolumes: Boolean) {
     }
 
     fun volumes(vararg names: String): List<VolumeBuilder.Volume> = names.map {
-        VolumeBuilder(it).volume
+        VolumeBuilder(it, environment).volume
     }.onEach {
         configuredVolumes.add(it)
     }
 
-    fun volume(name: String, builder: VolumeBuilder.() -> Unit) {
-        configuredVolumes.add(VolumeBuilder(name).apply(builder).volume)
+    fun volume(name: String, builder: (VolumeBuilder.() -> Unit)? = null) {
+        configuredVolumes.add(VolumeBuilder(name, environment).also { builder?.invoke(it) }.volume)
     }
 
     fun networks(vararg names: String): List<Network> {
@@ -35,7 +37,7 @@ class DockerComposeFileBuilder(private val externalVolumes: Boolean) {
 
     internal fun build(): String {
         val l = if (configuredVolumes.isNotEmpty()) {
-            lines + "volumes:" + configuredVolumes.flatMap { it.toLines(tab, externalVolumes) }
+            lines + "volumes:" + configuredVolumes.flatMap { it.toLines(tab) }
         } else lines
         return l.joinToString("\n")
     }

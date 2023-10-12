@@ -7,7 +7,7 @@ class ServiceBuilder(private val tab: String) {
     private val ports = mutableSetOf<PortMapping>()
     fun image(tag: String) = lines.add("$tab${tab}image: $tag")
     fun restart(value: String) = lines.add("$tab${tab}restart: $value")
-    fun volumes(vararg mappings: Pair<String, String>) = append("volumes", operator = ":", mappings)
+    fun volumes(vararg mappings: Pair<VolumeBuilder.Volume, String>) = append("volumes", operator = ":", mappings)
 
     fun port(inside: Int, outside: Int) = ports.add(PortMapping(inside, outside))
 

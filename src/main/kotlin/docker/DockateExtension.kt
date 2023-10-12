@@ -101,7 +101,7 @@ open class DockateExtension {
             val up = tasks.register<Exec>("dockerComposeUp$conf") {
                 dependsOn(create)
                 workingDir(create.flatMap { it.directory })
-                commandLine("docker", "compose", "up", "-d","--renew-anon-volumes")
+                commandLine("docker", "compose", "up", "--renew-anon-volumes")
             }
         }
     }

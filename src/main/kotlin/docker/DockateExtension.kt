@@ -3,6 +3,7 @@ package docker
 import docker.builders.DockerComposeFileBuilder
 import docker.builders.DockerfileBuilder
 import docker.models.LocalImage
+import docker.models.Volume
 import docker.tasks.CreateDockerComposeFileTask
 import docker.tasks.CreateDockerfileTask
 import org.gradle.api.Project
@@ -49,6 +50,14 @@ open class DockateExtension {
         create.configure { dependsOn(this@jvmImage.tasks.named("installDist")) }
     }
 
+    private fun Project.volumeCreateTask(volume: Volume) = tasks.register<Exec>("dockerVolumeCreate${volume.name.taskify()}") {
+        commandLine("docker", "volume", "create", volume.name)
+    }
+
+    private fun Project.volumeRemoveTask(volume: Volume) = tasks.register<Exec>("dockerVolumeRemove${volume.name.taskify()}") {
+        commandLine("docker", "volume", "remove", volume.name)
+    }
+
     fun Project.compose(
         directory: Provider<Directory> = layout.buildDirectory.dir("install/$name"),
         builder: DockerComposeFileBuilder.() -> Unit
@@ -62,38 +71,27 @@ open class DockateExtension {
         for (env in DockerEnvironment.values()) {
             val suffix = env.suffix
             val volumes = dcfb.volumes.map { it.copy(env) }
-            val vc = volumes.map {
-                tasks.register<Exec>("dockerVolumeCreate${it.name.taskify()}") {
-                    commandLine("docker", "volume", "create", it.name)
-                }
-            }
-            val vca = tasks.register("dockerVolumesCreateAll$suffix") { dependsOn(vc) }
+            val dvc = volumes.map { volumeCreateTask(it) }
+            val dvca = tasks.register("dockerVolumesCreateAll$suffix") { dependsOn(dvc) }
+            val dvr = volumes.map { volumeRemoveTask(it) }
+            val dvra = tasks.register("dockerVolumesRemoveAll$suffix") { dependsOn(dvr) }
 
-            val vr = volumes.map {
-                tasks.register<Exec>("dockerVolumeRemove${it.name.taskify()}") {
-                    commandLine("docker", "volume", "remove", it.name)
-                }
-            }
-            val vra = tasks.register("dockerVolumesRemoveAll$suffix") { dependsOn(vr) }
-
-            val create = tasks.register<CreateDockerComposeFileTask>("createDockerComposeFile$suffix") {
+            val createFile = tasks.register<CreateDockerComposeFileTask>("createDockerComposeFile$suffix") {
                 tasks.findByName("createAppDockerfile")?.let { dependsOn(it) }
                 this.directory.set(directory)
                 this.rawDockerComposeText.set(dcfb.build(env))
             }
 
             val down = tasks.register<Exec>("dockerComposeDown$suffix") {
-                dependsOn(create)
-                if (env == DockerEnvironment.Test) {
-                    finalizedBy(vra, prune)
-                }
+                dependsOn(createFile)
+                if (env == DockerEnvironment.Test) finalizedBy(dvra, prune)
                 workingDir(directory)
                 commandLine("docker", "compose", "down")
             }
 
             val up = tasks.register<Exec>("dockerComposeUp$suffix") {
-                dependsOn(create, vca)
-                workingDir(create.flatMap { it.directory })
+                dependsOn(createFile, dvca)
+                workingDir(createFile.flatMap { it.directory })
                 commandLine("docker", "compose", "up", "-d", "--renew-anon-volumes")
             }
         }

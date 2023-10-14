@@ -15,8 +15,14 @@ abstract class ServiceBuilder(val name: String) {
 
     protected val volumes = mutableListOf<Mapping<Volume, String>>()
 
-    fun volumes(vararg mappings: Pair<Volume, String>) {
-        volumes.addAll(mappings.map { (k, v) -> Mapping(k, v) })
+    fun volumes(vararg mappings: Pair<Volume, String>) = mappings.forEach { volume(it) }
+
+    fun volume(mapping: Pair<Volume, String>) {
+        volumes.add(Mapping(mapping.first, mapping.second))
+    }
+
+    fun volume(outside: Volume, inside: String) {
+        volumes.add(Mapping(outside, inside))
     }
 
     fun port(outside: Int, inside: Int) = ports.add(Mapping(outside, inside))

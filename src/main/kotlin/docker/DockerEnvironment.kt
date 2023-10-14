@@ -1,5 +1,5 @@
 package docker
 
-enum class DockerEnvironment {
-    Test, Prod
+enum class DockerEnvironment(internal val suffix: String) {
+    Test("Test"), Prod("");
 }

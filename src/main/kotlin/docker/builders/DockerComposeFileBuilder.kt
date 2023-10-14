@@ -1,55 +1,38 @@
 package docker.builders
 
 import docker.DockerEnvironment
+import docker.builders.service.ImageServiceBuilder
+import docker.builders.service.RegistryServiceBuilder
+import docker.builders.service.ServiceBuilder
+import docker.models.LocalImage
+import docker.models.Service
+import docker.models.Volume
+import org.gradle.api.Project
 
-class DockerComposeFileBuilder(private val environment: DockerEnvironment) {
-    private val lines = mutableListOf<String>()
+class DockerComposeFileBuilder {
 
-    private val tab = "  "
+    internal val volumes = mutableListOf<Volume>()
 
-    internal val configuredVolumes = mutableListOf<VolumeBuilder.Volume>()
-    fun version(value: Double) = lines.add("""version: "$value"""")
-
-    fun services(builder: ServicesBuilder.() -> Unit) {
-        lines.add("")
-        lines.add("services:")
-        ServicesBuilder().apply(builder)
+    private var version: Double? = null
+    fun version(value: Double) {
+        version = value
     }
 
-    fun volumes(vararg names: String): List<VolumeBuilder.Volume> = names.map {
-        VolumeBuilder(it, environment).volume
-    }.onEach {
-        configuredVolumes.add(it)
-    }
+    private val services = mutableListOf<Service<*>>()
+    fun service(name: String, image: LocalImage, builder: ImageServiceBuilder.() -> Unit) = ImageServiceBuilder(name, image).apply(builder).addToServices()
 
-    fun volume(name: String, builder: (VolumeBuilder.() -> Unit)? = null) {
-        configuredVolumes.add(VolumeBuilder(name, environment).also { builder?.invoke(it) }.volume)
-    }
+    fun service(name: String, image: String, configure: RegistryServiceBuilder.() -> Unit) = RegistryServiceBuilder(name, image).apply(configure).addToServices()
 
-    fun networks(vararg names: String): List<Network> {
-        lines.add("")
-        lines.add("networks:")
-        return names.map {
-            lines.add("$tab$it:")
-            Network(it)
+    private fun ServiceBuilder.addToServices() = build().also { services.add(it) }
+
+    fun Project.volumes(vararg names: String) = names.map { volume(it) }
+
+    fun Project.volume(name: String) = Volume(name = name).also { volumes.add(it) }
+    internal fun build(env: DockerEnvironment) = buildString {
+        appendLine("""version: "$version"""")
+        with(DockerComposeFileAppender(tab = "  ")) {
+            appendLine(services, env)
+            appendLine(volumes, env)
         }
     }
-
-    internal fun build(): String {
-        val l = if (configuredVolumes.isNotEmpty()) {
-            lines + "volumes:" + configuredVolumes.flatMap { it.toLines(tab) }
-        } else lines
-        return l.joinToString("\n")
-    }
-
-    inner class ServicesBuilder {
-        fun service(name: String, builder: ServiceBuilder.() -> Unit): ServiceBuilder.Service {
-            lines.add("$tab$name:")
-            lines.add(ServiceBuilder(tab).apply(builder).build())
-            lines.add("")
-            return ServiceBuilder.Service(name)
-        }
-    }
-
-    class Network internal constructor(val name: String)
 }

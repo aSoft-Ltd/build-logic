@@ -15,8 +15,20 @@ abstract class CreateDockerComposeFileTask : DefaultTask() {
     @get:Input
     abstract val rawDockerComposeText: Property<String>
 
+    @get:Input
+    abstract val tag: Property<String>
+
+    private val old = "${project.name}:${project.version}"
+
+    init {
+        tag.convention(old)
+    }
+
     @TaskAction
     fun create() {
-        directory.file("docker-compose.yml").get().asFile.writeText(rawDockerComposeText.get())
+        val t = tag.getOrElse(old)
+        val text = rawDockerComposeText.get().replace(old, t)
+        println("new text: $text")
+        directory.file("docker-compose.yml").get().asFile.writeText(text)
     }
 }

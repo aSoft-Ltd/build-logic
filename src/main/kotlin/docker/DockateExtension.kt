@@ -62,6 +62,12 @@ abstract class DockateExtension(internal val project: Project) {
                 dependsOn(create, copy)
             }
 
+            environment.files.forEach { file ->
+                val url = output.file("images/${name.lowercase()}/${environment.name.lowercase()}${file.path}")
+                file.create.configure { output.set(url) }
+                build.configure { dependsOn(file.create) }
+            }
+
             val remove = tasks.register<Exec>("dockerImageRemove${middleName}") {
                 group = "Dockate Remove"
                 commandLine("docker", "image", "remove", image)
@@ -80,12 +86,12 @@ abstract class DockateExtension(internal val project: Project) {
             dependsOn(envs.map { it.copy })
         }
 
-        val build = tasks.register("docker${name.taskify()}ImagesBuild") {
+        val build = tasks.register("dockerImagesBuild${name.taskify()}") {
             group = "Dockate Build"
             dependsOn(envs.map { it.build })
         }
 
-        val remove = tasks.register("docker${name.taskify()}ImagesRemove") {
+        val remove = tasks.register("dockerImagesRemove${name.taskify()}") {
             group = "Dockate Remove"
             dependsOn(envs.map { it.remove })
         }
@@ -131,6 +137,7 @@ abstract class DockateExtension(internal val project: Project) {
                 dependsOn(createFile)
                 if (env.name.contains("test", ignoreCase = true) || env.name.contains("dev", ignoreCase = true)) {
                     finalizedBy(dvra, prune)
+                    finalizedBy(imgs.map { it.remove })
                 }
                 workingDir(location)
                 commandLine("docker", "compose", "down")

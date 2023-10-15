@@ -30,6 +30,23 @@ class DockerComposeFileBuilder(val environment: String) {
         configure: RegistryServiceBuilder.() -> Unit
     ) = RegistryServiceBuilder(name, image).apply(configure).addToServices()
 
+    fun mongo(
+        name: String = "mongo",
+        image: String = "mongo:latest",
+        username: String,
+        password: String,
+        port: Int,
+        configure: RegistryServiceBuilder.() -> Unit = {}
+    ) = service(name, image) {
+        restart("always")
+        port(outside = port, inside = 27017)
+        environment(
+            "MONGO_INITDB_ROOT_USERNAME" to username,
+            "MONGO_INITDB_ROOT_PASSWORD" to password
+        )
+        configure()
+    }
+
     private fun ServiceBuilder.addToServices() = build(environment).also { services.add(it) }
 
     fun Project.volumes(vararg names: String) = names.map { volume(it) }

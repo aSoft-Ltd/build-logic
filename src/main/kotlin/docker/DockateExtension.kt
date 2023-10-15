@@ -24,7 +24,7 @@ abstract class DockateExtension(internal val project: Project) {
     private val images = mutableListOf<LocalImageRef>()
 
     private var stack: String = ""
-    fun environments(vararg names: String, configuration: RunningEnvironmentBuilder.(String) -> Unit) = names.map { name ->
+    fun environments(vararg names: String, configuration: RunningEnvironmentBuilder.(String) -> Unit = {}) = names.map { name ->
         RunningEnvironmentBuilder().run {
             configuration(name)
             project.build(name, output)

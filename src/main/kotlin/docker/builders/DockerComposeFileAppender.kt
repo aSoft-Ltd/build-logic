@@ -1,19 +1,19 @@
 package docker.builders
 
-import docker.DockerEnvironment
 import docker.models.Mapping
+import docker.models.RunningEnvironment
 import docker.models.Service
 import docker.models.Volume
 
 internal class DockerComposeFileAppender(private val tab: String) {
     @JvmName("appendServices")
-    fun StringBuilder.appendLine(services: List<Service<*>>, env: DockerEnvironment) {
+    fun StringBuilder.appendLine(services: List<Service<*>>, env: RunningEnvironment) {
         appendLine()
         appendLine("services:")
         for (service in services) appendLine(service, env)
     }
 
-    private fun StringBuilder.appendLine(service: Service<*>, env: DockerEnvironment) {
+    private fun StringBuilder.appendLine(service: Service<*>, env: RunningEnvironment) {
         appendLine("""$tab${service.name}:""")
         appendLine("""$tab${tab}image: ${service.image.name}""")
         if (service.restart != null) {
@@ -36,7 +36,7 @@ internal class DockerComposeFileAppender(private val tab: String) {
     }
 
     @JvmName("appendVolumes")
-    fun StringBuilder.appendLine(volumes: List<Volume>, env: DockerEnvironment) {
+    fun StringBuilder.appendLine(volumes: List<Volume>, env: RunningEnvironment) {
         if (volumes.isEmpty()) return
         appendLine()
         appendLine("volumes:")

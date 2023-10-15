@@ -1,16 +1,15 @@
 package docker.tasks
 
 import org.gradle.api.DefaultTask
-import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
-import org.gradle.api.tasks.OutputDirectory
+import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 
-abstract class CreateDockerfileTask : DefaultTask() {
-
-    @get:OutputDirectory
-    abstract val directory: DirectoryProperty
+abstract class CreateTextFileTask : DefaultTask() {
+    @get:OutputFile
+    abstract val output: RegularFileProperty
 
     @get:Input
     abstract val content: Property<String>
@@ -18,8 +17,9 @@ abstract class CreateDockerfileTask : DefaultTask() {
     init {
         group = "Dockate Create"
     }
+
     @TaskAction
     fun create() {
-        directory.file("Dockerfile").get().asFile.writeText(content.get())
+        output.get().asFile.writeText(content.get())
     }
 }

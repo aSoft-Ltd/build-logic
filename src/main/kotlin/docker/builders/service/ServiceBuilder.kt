@@ -36,5 +36,5 @@ abstract class ServiceBuilder(val name: String) {
 
     fun dependsOn(vararg services: Service<*>) = dependencies.addAll(services)
 
-    abstract fun build(): Service<*>
+    abstract fun build(environment: String): Service<*>
 }

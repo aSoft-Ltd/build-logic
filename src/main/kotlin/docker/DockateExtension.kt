@@ -2,53 +2,98 @@ package docker
 
 import docker.builders.DockerComposeFileBuilder
 import docker.builders.DockerfileBuilder
+import docker.builders.RunningEnvironmentBuilder
 import docker.models.LocalImage
+import docker.models.LocalImageRef
+import docker.models.RunningEnvironment
 import docker.models.Volume
 import docker.tasks.CreateDockerComposeFileTask
 import docker.tasks.CreateDockerfileTask
 import org.gradle.api.Project
-import org.gradle.api.file.Directory
-import org.gradle.api.provider.Provider
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.tasks.Copy
 import org.gradle.api.tasks.Exec
+import org.gradle.configurationcache.extensions.capitalized
 import org.gradle.kotlin.dsl.register
 
-open class DockateExtension {
-    private var dcfb = DockerComposeFileBuilder()
+abstract class DockateExtension(internal val project: Project) {
+    abstract val output: DirectoryProperty
 
-    fun Project.image(name: String, directory: Provider<Directory>, builder: DockerfileBuilder.() -> Unit): LocalImage {
-        val create = tasks.register<CreateDockerfileTask>("createDockerfile") {
-            this.directory.set(directory)
-            rawDockerText.set(DockerfileBuilder().apply(builder).text.toString())
+    private val environments = mutableListOf<RunningEnvironment>()
+
+    private val images = mutableListOf<LocalImageRef>()
+
+    private var stack: String = ""
+    fun environments(vararg names: String, configuration: RunningEnvironmentBuilder.(String) -> Unit) = names.map { name ->
+        RunningEnvironmentBuilder().run {
+            configuration(name)
+            project.build(name, output)
+        }.also {
+            environments.add(it)
         }
-
-        val build = tasks.register<Exec>("dockerImageBuild") {
-            commandLine("docker", "build", "-t", name, ".")
-            workingDir(create.flatMap { it.directory })
-            dependsOn(create)
-        }
-
-        val remove = tasks.register<Exec>("dockerImageRemove") {
-            commandLine("docker", "image", "remove", name)
-        }
-
-        return LocalImage(name, create, build, remove)
     }
 
-    fun Project.jvmImage(
-        from: String = "openjdk:22-jdk-slim",
-        name: String = "${this.name}:${this.version}",
-        directory: Provider<Directory> = layout.buildDirectory.dir("install/${this.name}"),
-        port: Int
-    ) = image(name = name, directory) {
-        from(from)
-        expose(port)
-        copy("bin", "/app/bin")
-        copy("lib", "/app/lib")
-        volume("/app/root")
-        cmd("/app/bin/${this@jvmImage}")
-    }.apply {
-        create.configure { dependsOn(this@jvmImage.tasks.named("installDist")) }
+    fun Project.image(
+        name: String = this.name,
+        version: String = this.version.toString(),
+        builder: DockerfileBuilder.(RunningEnvironment) -> Unit
+    ): LocalImageRef {
+        val envs = environments.map { environment ->
+            val middleName = "${name.taskify()}${environment.name.capitalized()}"
+            val location = output.dir("images/${name.lowercase()}/${environment.name.lowercase()}")
+            val dfb = DockerfileBuilder().apply { builder(environment) }
+            val create = tasks.register<CreateDockerfileTask>("create${middleName}Dockerfile") {
+                this.directory.set(location)
+                content.set(dfb.text.toString())
+            }
+
+            val copy = tasks.register<Copy>("copy${middleName}ImageSources") {
+                group = "Dockate Create"
+                dfb.sources.map { it.configuration(this) }
+                from(dfb.sources.map { it.location })
+                into(location)
+            }
+
+            val image = "$name-${environment.name.lowercase()}:${version}"
+            val build = tasks.register<Exec>("dockerImageBuild${middleName}") {
+                group = "Dockate Build"
+                commandLine("docker", "build", "-t", image, ".")
+                workingDir(create.flatMap { it.directory })
+                dependsOn(create, copy)
+            }
+
+            val remove = tasks.register<Exec>("dockerImageRemove${middleName}") {
+                group = "Dockate Remove"
+                commandLine("docker", "image", "remove", image)
+            }
+
+            LocalImage(name, version, environment, create, copy, build, remove, location)
+        }
+
+        val create = tasks.register("create${name.taskify()}Dockerfiles") {
+            group = "Dockate Create"
+            dependsOn(envs.map { it.create })
+        }
+
+        val copy = tasks.register("copy${name.taskify()}ImageSources") {
+            group = "Dockate Create"
+            dependsOn(envs.map { it.copy })
+        }
+
+        val build = tasks.register("docker${name.taskify()}ImagesBuild") {
+            group = "Dockate Build"
+            dependsOn(envs.map { it.build })
+        }
+
+        val remove = tasks.register("docker${name.taskify()}ImagesRemove") {
+            group = "Dockate Remove"
+            dependsOn(envs.map { it.remove })
+        }
+
+        return LocalImageRef(name, version, envs, create, copy, build, remove).also { images.add(it) }
     }
+
+    val OPEN_JDK_22_JDK_SLIM = "openjdk:22-jdk-slim"
 
     private fun Project.volumeCreateTask(volume: Volume) = tasks.register<Exec>("dockerVolumeCreate${volume.name.taskify()}") {
         commandLine("docker", "volume", "create", volume.name)
@@ -58,38 +103,41 @@ open class DockateExtension {
         commandLine("docker", "volume", "remove", volume.name)
     }
 
-    fun Project.compose(
-        directory: Provider<Directory> = layout.buildDirectory.dir("install/$name"),
-        builder: DockerComposeFileBuilder.() -> Unit
-    ) {
-        dcfb = DockerComposeFileBuilder().apply(builder)
-
+    fun Project.compose(stack: String, builder: DockerComposeFileBuilder.(RunningEnvironment) -> Unit) {
+        this@DockateExtension.stack = stack
         val prune = tasks.register<Exec>("dockerSystemPrune") {
             commandLine("docker", "system", "prune", "--volumes", "-f")
         }
 
-        for (env in DockerEnvironment.values()) {
-            val suffix = env.suffix
+        for (env in environments) {
+            val dcfb = env.dcf.apply { builder(env) }
+            val imgs = images.flatMap { it.images }.filter { it.environment == env }
+
+            val middle = "${stack.taskify()}${env.name.taskify()}"
             val volumes = dcfb.volumes.map { it.copy(env) }
             val dvc = volumes.map { volumeCreateTask(it) }
-            val dvca = tasks.register("dockerVolumesCreateAll$suffix") { dependsOn(dvc) }
+            val dvca = tasks.register("dockerVolumesCreateAll$middle") { dependsOn(dvc) }
             val dvr = volumes.map { volumeRemoveTask(it) }
-            val dvra = tasks.register("dockerVolumesRemoveAll$suffix") { dependsOn(dvr) }
+            val dvra = tasks.register("dockerVolumesRemoveAll$middle") { dependsOn(dvr) }
 
-            val createFile = tasks.register<CreateDockerComposeFileTask>("createDockerComposeFile$suffix") {
-                tasks.findByName("createAppDockerfile")?.let { dependsOn(it) }
-                this.directory.set(directory)
-                this.rawDockerComposeText.set(dcfb.build(env))
+            val location = output.dir("stacks/$stack-${env.name}".lowercase())
+
+            val createFile = tasks.register<CreateDockerComposeFileTask>("create${middle}DockerComposeFile") {
+                this.directory.set(location)
+                this.content.set(dcfb.build(env))
             }
 
-            val down = tasks.register<Exec>("dockerComposeDown$suffix") {
+            val down = tasks.register<Exec>("dockerComposeDown$middle") {
                 dependsOn(createFile)
-                if (env == DockerEnvironment.Test) finalizedBy(dvra, prune)
-                workingDir(directory)
+                if (env.name.contains("test", ignoreCase = true) || env.name.contains("dev", ignoreCase = true)) {
+                    finalizedBy(dvra, prune)
+                }
+                workingDir(location)
                 commandLine("docker", "compose", "down")
             }
 
-            val up = tasks.register<Exec>("dockerComposeUp$suffix") {
+            val up = tasks.register<Exec>("dockerComposeUp$middle") {
+                dependsOn(imgs.map { it.build })
                 dependsOn(createFile, dvca)
                 workingDir(createFile.flatMap { it.directory })
                 commandLine("docker", "compose", "up", "-d", "--renew-anon-volumes")
@@ -101,65 +149,71 @@ open class DockateExtension {
         name: String,
         url: String,
         user: String,
-        pass: String,
-        directory: Provider<Directory> = layout.buildDirectory.dir("install/${this.name}")
+        pass: String
     ) {
         val linkWithPort = url.split("//").lastOrNull() ?: url
         val linkWithoutPort = linkWithPort.split(":").firstOrNull() ?: linkWithPort
-        val localTag = "${this@registry.name}:$version"
-        val remoteTag = "$linkWithPort/$localTag"
-        val build = tasks.findByName("dockerImageBuild")
+        for (env in environments) {
+            val images = images.flatMap { it.images }.filter { it.environment == env }
+            val imageTasks = images.map {
+                val middle = it.qualifiedNameWithoutVersion.taskify()
+                val local = it.qualifiedNameWithVersion
+                val remote = "$linkWithPort/$local"
+                val tag = tasks.register<Exec>("dockerImageTag${middle}For${name.capitalized()}") {
+                    dependsOn(it.build)
+                    commandLine("docker", "image", "tag", local, remote)
+                }
 
-        val tag = if (build != null) tasks.register<Exec>("dockerImageTagFor${name.taskify()}") {
-            dependsOn(build)
-            commandLine("docker", "image", "tag", localTag, remoteTag)
-        } else null
+                val push = tasks.register<Exec>("dockerImagePush${middle}To${name.taskify()}") {
+                    dependsOn(tag)
+                    commandLine("docker", "image", "push", remote)
+                }
 
-        val push = if (build != null) tasks.register<Exec>("dockerImagePushTo${name.taskify()}") {
-            dependsOn(tag)
-            commandLine("docker", "image", "push", "$linkWithPort/$localTag")
-        } else null
+                tag to push
+            }
 
-        val create = tasks.register<CreateDockerComposeFileTask>("createDockerComposeFileFor${name.taskify()}") {
-            this.directory.set(directory)
-            this.rawDockerComposeText.set(dcfb.build(DockerEnvironment.Prod))
-            this.tag.set(remoteTag)
-        }
+            val middle = "${stack.capitalized()}${env.name.taskify()}"
+            val location = output.dir("stacks/$name/$stack-${env.name}".lowercase())
+            val create = tasks.register<CreateDockerComposeFileTask>("create${middle}DockerComposeFileFor${name.taskify()}") {
+                this.directory.set(location)
+                this.content.set(env.dcf.build(env))
+                this.tags.set(images.associate { it.qualifiedNameWithVersion to "$linkWithPort/${it.qualifiedNameWithVersion}" })
+            }
 
-        val base = "/$name/apps/${this@registry.name}"
-        val destination = tasks.register<Exec>("createDestinationDirectoryFor${name.taskify()}") {
-            val script = "mkdir $base/root -p && mkdir $base/data -p"
-            commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
-        }
+            val base = "/$name/apps/${stack.lowercase()}/${env.name.lowercase()}"
+            val destination = tasks.register<Exec>("create${middle}DirectoryIn${name.taskify()}") {
+                val script = "mkdir $base/root -p && mkdir $base/data -p"
+                commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
+            }
 
-        val copy = tasks.register<Exec>("copyDockerComposeFileTo${name.taskify()}") {
-            dependsOn(create, destination)
-            workingDir(directory)
-            commandLine("sshpass", "-p", pass, "scp", "./docker-compose.yml", "$user@$linkWithoutPort:$base/docker-compose.yml")
-        }
+            val copy = tasks.register<Exec>("copy${middle}DockerComposeFileTo${name.taskify()}") {
+                dependsOn(create, destination)
+                workingDir(location)
+                commandLine("sshpass", "-p", pass, "scp", "./docker-compose.yml", "$user@$linkWithoutPort:$base/docker-compose.yml")
+            }
 
-        val pull = tasks.register<Exec>("dockerComposePullIn${name.taskify()}") {
-            if (push != null) dependsOn(push)
-            dependsOn(copy)
-            val script = "cd $base && docker-compose pull"
-            commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
-        }
+            val pull = tasks.register<Exec>("dockerComposePull${middle}In${name.taskify()}") {
+                dependsOn(imageTasks.map { (_, push) -> push })
+                dependsOn(copy)
+                val script = "cd $base && docker-compose pull"
+                commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
+            }
 
-        val volumes = tasks.register<Exec>("dockerVolumesCreateIn${name.taskify()}") {
-            val script = "docker system prune --volumes -f && " + dcfb.volumes.joinToString(" && ") { "docker volume create ${it.name}" }
-            commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
-        }
+            val volumes = tasks.register<Exec>("docker${middle}VolumesCreateIn${name.taskify()}") {
+                val script = "docker system prune --volumes -f && " + env.dcf.volumes.map { it.copy(env) }.joinToString(" && ") { "docker volume create ${it.name}" }
+                commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
+            }
 
-        val deploy = tasks.register<Exec>("dockerStackDeployIn${name.taskify()}") {
-            if (push != null) dependsOn(pull)
-            dependsOn(copy, volumes)
-            val script = "cd $base && docker stack deploy -c docker-compose.yml ${this@registry.name}"
-            commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
-        }
+            val deploy = tasks.register<Exec>("dockerStackDeploy${middle}In${name.taskify()}") {
+                dependsOn(copy, volumes, pull)
+                val script = "cd $base && docker stack deploy -c docker-compose.yml $stack-${env.name.lowercase()}"
+                commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
+            }
 
-        val remove = tasks.register<Exec>("dockerStackRemoveIn${name.taskify()}") {
-            val script = "docker stack remove ${this@registry.name}"
-            commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
+            val remove = tasks.register<Exec>("dockerStackRemove${middle}In${name.taskify()}") {
+                val script = "docker stack remove $stack-${env.name.lowercase()}"
+                commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
+            }
         }
     }
 }

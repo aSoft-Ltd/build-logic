@@ -2,6 +2,7 @@ package docker.tasks
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.OutputDirectory
@@ -13,22 +14,15 @@ abstract class CreateDockerComposeFileTask : DefaultTask() {
     abstract val directory: DirectoryProperty
 
     @get:Input
-    abstract val rawDockerComposeText: Property<String>
+    abstract val content: Property<String>
 
     @get:Input
-    abstract val tag: Property<String>
-
-    private val old = "${project.name}:${project.version}"
-
-    init {
-        tag.convention(old)
-    }
+    abstract val tags: MapProperty<String, String>
 
     @TaskAction
     fun create() {
-        val t = tag.getOrElse(old)
-        val text = rawDockerComposeText.get().replace(old, t)
-        println("new text: $text")
+        var text = content.get()
+        tags.get().forEach { (old, new) -> text = text.replace(old, new) }
         directory.file("docker-compose.yml").get().asFile.writeText(text)
     }
 }

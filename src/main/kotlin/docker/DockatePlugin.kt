@@ -5,6 +5,7 @@ import org.gradle.api.Project
 
 open class DockatePlugin : Plugin<Project> {
     override fun apply(target: Project) {
-        target.extensions.add("dockate", DockateExtension::class.java)
+        val dockate = target.extensions.create("dockate", DockateExtension::class.java, target)
+        dockate.output.set(target.layout.buildDirectory.dir("dockate"))
     }
 }

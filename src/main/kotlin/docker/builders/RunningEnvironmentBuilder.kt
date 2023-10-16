@@ -53,4 +53,20 @@ class RunningEnvironmentBuilder {
         appendLine("""type = "console"""")
         appendLine("""format.type = "$format"""")
     }
+
+    fun StringBuilder.mail(
+        sender: String,
+        host: String? = null,
+        user: String? = null,
+        port: String? = null,
+        password: String? = null
+    ) {
+        appendLine()
+        appendLine("""[mail]""")
+        appendLine("""sender = "$sender"""")
+        if (host != null) appendLine("""host = "$host"""")
+        if (user != null) appendLine("""user = "$user"""")
+        if (port != null) appendLine("""port = $port""")
+        if (password != null) appendLine("""password = "$password"""")
+    }
 }

@@ -7,12 +7,6 @@ repositories {
     gradlePluginPortal()
 }
 
-kotlin {
-    target {
-
-    }
-}
-
 dependencies {
     testImplementation(kotlin("test"))
 }

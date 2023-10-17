@@ -8,13 +8,18 @@ import org.gradle.api.tasks.Copy
 class DockerfileBuilder {
     internal val text = StringBuilder()
 
-    internal class Source(val location: Provider<Directory>, val configuration: Copy.() -> Unit)
+    internal class Source(val location: Provider<Directory>,val configuration: Copy.() -> Unit)
 
     internal val sources = mutableListOf<Source>()
     fun Project.source(
         from: Provider<Directory>,
         configuration: Copy.() -> Unit = {}
     ) = sources.add(Source(from, configuration))
+
+    fun Project.source(
+        from: Directory,
+        configuration: Copy.() -> Unit = {}
+    ) = sources.add(Source(provider { from }, configuration))
 
     fun from(image: String) = text.appendLine("FROM $image")
     fun expose(port: Int) = text.appendLine("EXPOSE $port")

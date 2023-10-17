@@ -69,4 +69,47 @@ class RunningEnvironmentBuilder {
         if (port != null) appendLine("""port = $port""")
         if (password != null) appendLine("""password = "$password"""")
     }
+
+    fun StringBuilder.recovery(
+        name: String,
+        address: String,
+        subject: String,
+        template: String,
+    ) = templatedEmail(
+        context = "authentication",
+        scope = "recovery.email",
+        name = name,
+        address = address,
+        subject = subject,
+        template = template
+    )
+    fun StringBuilder.verification(
+        name: String,
+        address: String,
+        subject: String,
+        template: String,
+    ) = templatedEmail(
+        context = "registration",
+        scope = "verification.email",
+        name = name,
+        address = address,
+        subject = subject,
+        template = template
+    )
+
+    private fun StringBuilder.templatedEmail(
+        context: String,
+        scope: String,
+        name: String,
+        address: String,
+        subject: String,
+        template: String,
+    ) {
+        appendLine()
+        appendLine("""[$context]""")
+        appendLine("""$scope.name = "$name"""")
+        appendLine("""$scope.address = "$address"""")
+        appendLine("""$scope.subject = "$subject"""")
+        appendLine("""$scope.template = "$template"""")
+    }
 }

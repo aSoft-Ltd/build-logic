@@ -7,6 +7,12 @@ repositories {
     gradlePluginPortal()
 }
 
+kotlin {
+    target {
+
+    }
+}
+
 dependencies {
-    implementation("org.hidetake:groovy-ssh:2.11.2")
+    testImplementation(kotlin("test"))
 }

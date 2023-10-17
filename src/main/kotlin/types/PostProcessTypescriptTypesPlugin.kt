@@ -11,12 +11,4 @@ open class PostProcessTypescriptTypesPlugin : Plugin<Project> {
         purifyTask.dependsOn(compileTask)
         buildTask?.dependsOn(purifyTask)
     }
-
-//    override fun apply(target: Project) {
-//        val purifyTask = target.tasks.create("purifyTypes", PurifyTypesTask::class.java)
-//        val compileTask = target.tasks.findByName("productionLibraryCompileSync") ?: target.tasks.findByName("jsProductionLibraryCompileSync")
-//        val buildTask = target.tasks.findByName("build")
-//        purifyTask.dependsOn(compileTask)
-//        buildTask?.dependsOn(purifyTask)
-//    }
 }

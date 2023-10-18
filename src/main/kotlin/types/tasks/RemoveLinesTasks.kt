@@ -17,7 +17,7 @@ abstract class RemoveLinesTasks : DefaultTask() {
     abstract val input: RegularFileProperty
 
     @get:OutputFile
-    val output: Provider<RegularFile> = project.layout.buildDirectory.file("typescript/removed-lines.d.ts")
+    val output: Provider<RegularFile> = project.layout.buildDirectory.file("typescript/intermediaries/removed-lines.d.ts")
 
     @get:Input
     abstract val lines: ListProperty<String>

@@ -17,7 +17,7 @@ abstract class RemoveCodeBlockTask : DefaultTask() {
     abstract val input: RegularFileProperty
 
     @get:OutputFile
-    val output: Provider<RegularFile> = project.layout.buildDirectory.file("typescript/removed-code-blocks.d.ts")
+    val output: Provider<RegularFile> = project.layout.buildDirectory.file("typescript/intermediaries/removed-code-blocks.d.ts")
 
     @get:Input
     abstract val blocks: ListProperty<String>

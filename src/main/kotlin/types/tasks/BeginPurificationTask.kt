@@ -14,13 +14,11 @@ abstract class BeginPurificationTask : DefaultTask() {
     abstract val directory: DirectoryProperty
 
     @get:OutputFile
-    val output: Provider<RegularFile> = project.layout.buildDirectory.dir("typescript").map {
-        it.file("beginning.d.ts")
-    }
+    val output: Provider<RegularFile> = project.layout.buildDirectory.file("typescript/intermediaries/beginning.d.ts")
 
     @TaskAction
     fun initiate() {
         val definition = directory.get().asFile.listFiles()?.firstOrNull { it.name.contains(".d.ts") }
-        definition?.renameTo(output.get().asFile)
+        definition?.copyTo(output.get().asFile, overwrite = true)
     }
 }

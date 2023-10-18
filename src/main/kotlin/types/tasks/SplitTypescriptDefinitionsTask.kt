@@ -15,10 +15,11 @@ abstract class SplitTypescriptDefinitionsTask : DefaultTask() {
     abstract val input: RegularFileProperty
 
     @get:OutputDirectory
-    val output: Provider<Directory> = project.layout.buildDirectory.dir("typescript")
+    val output: Provider<Directory> = project.layout.buildDirectory.dir("typescript/output")
 
     class DeclarationFile(
-        val imports: MutableList<String> = mutableListOf(), val lines: MutableList<String> = mutableListOf()
+        val imports: MutableList<String> = mutableListOf(),
+        val lines: MutableList<String> = mutableListOf()
     )
 
     @TaskAction
@@ -56,10 +57,7 @@ abstract class SplitTypescriptDefinitionsTask : DefaultTask() {
                 while (true) {
                     index++
                     val l = lines[index]
-                    val ic = l.checkImport()
-                    if (ic.exists) {
-                        code.imports.add(ic.namespace ?: "")
-                    }
+                    l.checkImports().forEach { code.imports.add(it.namespace) }
                     if (l.contains("{") && l.contains("}")) {
                         code.lines.add(l)
                         index++
@@ -81,16 +79,32 @@ abstract class SplitTypescriptDefinitionsTask : DefaultTask() {
     }
 
 
-    private data class ImportCheck(val namespace: String?) {
-        val exists = namespace != null
+    private data class ImportCheck(val namespace: String)
+
+    private fun String.checkImports(): List<ImportCheck> {
+        if (!contains(".")) return emptyList()
+        if (contains("=")) return emptyList()
+
+        if (contains(": ")) { // type
+            return substringAfter(": ").substringBefore(";").tokenImportCheck()
+        }
+
+        val extends = split("extends ").lastOrNull() ?: return emptyList()
+
+        return extends.split(" ,").flatMap { it.tokenImportCheck() }
     }
 
-    private fun String.checkImport(): ImportCheck {
-        if (contains(": ") && contains(".") && !contains("=")) {
-            return ImportCheck(split(": ").lastOrNull()?.split(".")?.firstOrNull())
-        } else if (contains("extends ") && contains(".") && !contains("=")) {
-            return ImportCheck(split("extends ").lastOrNull()?.split(".")?.firstOrNull())
+    private fun String.tokenImportCheck(): List<ImportCheck> {
+        if (!contains(".")) return emptyList()
+
+        // kase.Progress
+        if (!contains("<")) {
+            val namespace = split(".").first()
+            return listOf(ImportCheck(namespace))
         }
-        return ImportCheck(null)
+
+        val inner = substringAfterLast("<").substringBefore(">")
+        val outer = replace("<$inner>", "")
+        return inner.tokenImportCheck() + outer.tokenImportCheck()
     }
 }

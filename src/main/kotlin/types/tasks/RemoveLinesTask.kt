@@ -10,7 +10,7 @@ import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 
-abstract class RemoveLinesTasks : DefaultTask() {
+abstract class RemoveLinesTask : DefaultTask() {
 
 
     @get:InputFile

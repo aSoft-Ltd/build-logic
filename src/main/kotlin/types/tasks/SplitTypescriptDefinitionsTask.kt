@@ -27,10 +27,11 @@ abstract class SplitTypescriptDefinitionsTask : DefaultTask() {
         val dir = File(output.get().asFile, "types").apply { mkdir() }
         val namespaces = detectNameSpaceCodeBlocks(input.get().asFile.readLines())
         namespaces.forEach { (namespace, code) ->
-            val file = File(dir, "$namespace.d.ts").apply { createNewFile() }
+            val subDir = File(dir, namespace).apply { mkdir() }
+            val file = File(subDir, "$namespace.d.ts").apply { createNewFile() }
             val imports = code.imports.filter {
                 it != namespace && it in namespaces.keys
-            }.toSet().map { """import { $it } from './$it'""" }
+            }.toSet().map { """import { $it } from '../$it/$it'""" }
 
             val top = ((if (imports.isNotEmpty()) imports + listOf("") else emptyList()) + listOf(
                 "type Nullable<T> = T | null | undefined",
@@ -81,30 +82,31 @@ abstract class SplitTypescriptDefinitionsTask : DefaultTask() {
 
     private data class ImportCheck(val namespace: String)
 
-    private fun String.checkImports(): List<ImportCheck> {
-        if (!contains(".")) return emptyList()
-        if (contains("=")) return emptyList()
+    private fun String.checkImports(): Set<ImportCheck> {
+        if (!contains(".")) return emptySet()
+        if (contains("=")) return emptySet()
 
         if (contains(": ")) { // type
-            return substringAfter(": ").substringBefore(";").tokenImportCheck()
+            return split(": ").flatMap { it.tokenImportCheck() }.toSet()
         }
 
-        val extends = split("extends ").lastOrNull() ?: return emptyList()
+        val extends = split("extends ").lastOrNull() ?: return emptySet()
 
-        return extends.split(" ,").flatMap { it.tokenImportCheck() }
+        return extends.split(" ,").flatMap { it.tokenImportCheck() }.toSet()
     }
 
-    private fun String.tokenImportCheck(): List<ImportCheck> {
-        if (!contains(".")) return emptyList()
+    private fun String.tokenImportCheck(): Set<ImportCheck> {
+        if (!contains(".")) return emptySet()
 
         // kase.Progress
         if (!contains("<")) {
             val namespace = split(".").first()
-            return listOf(ImportCheck(namespace))
+            return setOf(ImportCheck(namespace))
         }
 
         val inner = substringAfterLast("<").substringBefore(">")
+        val innerTokens = inner.split(", ")
         val outer = replace("<$inner>", "")
-        return inner.tokenImportCheck() + outer.tokenImportCheck()
+        return (innerTokens.flatMap { it.tokenImportCheck() } + outer.tokenImportCheck()).toSet()
     }
 }

@@ -2,11 +2,6 @@ package types
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.kotlin.dsl.register
-import types.tasks.BeginPurificationTask
-import types.tasks.RemoveCodeBlockTask
-import types.tasks.RemoveLinesTasks
-import types.tasks.SplitTypescriptDefinitionsTask
 
 open class PostProcessTypescriptTypesPlugin : Plugin<Project> {
     override fun apply(target: Project) {

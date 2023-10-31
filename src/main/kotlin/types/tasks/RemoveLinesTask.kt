@@ -27,7 +27,7 @@ abstract class RemoveLinesTask : DefaultTask() {
             listOf(
                 "component", "_init_", "factory", "hashCode()", "toString",
                 "copy(", "equals", "serializer()", "descriptor: kotlinx.", "static from_property",
-                "doNotUseIt", "**/> */", "_ignore_", "constructor", " config", "getValue(thisRef",
+                "doNotUseIt", "**/> */", "_ignore_", "constructor", "getValue(thisRef",
                 "readonly __doNotUseOrImplementIt:", "protected "
             )
         )

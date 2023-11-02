@@ -32,7 +32,7 @@ class DockerComposeFileBuilder(val environment: String) {
 
     fun mongo(
         name: String = "mongo",
-        image: String = "mongo:latest",
+        image: String = "mongo:4.4.25-focal", // MongoDB 5.0+ requires a CPU with AVX support, and your current
         username: String,
         password: String,
         port: Int,

@@ -7,6 +7,7 @@ import docker.models.LocalImage
 import docker.models.LocalImageRef
 import docker.models.RunningEnvironment
 import docker.models.Volume
+import docker.tasks.AllowRegistryTask
 import docker.tasks.CreateDockerComposeFileTask
 import docker.tasks.CreateDockerfileTask
 import org.gradle.api.Project
@@ -156,10 +157,16 @@ abstract class DockateExtension(internal val project: Project) {
         name: String,
         url: String,
         user: String,
-        pass: String
+        pass: String,
+        workdir: String = name,
     ) {
         val linkWithPort = url.split("//").lastOrNull() ?: url
         val linkWithoutPort = linkWithPort.split(":").firstOrNull() ?: linkWithPort
+
+        val allowRegistry = tasks.register<AllowRegistryTask>("allowRegistryFor${name.capitalized()}") {
+            registry.set(linkWithPort)
+        }
+
         for (env in environments) {
             val images = images.flatMap { it.images }.filter { it.environment == env }
             val imageTasks = images.map {
@@ -167,6 +174,7 @@ abstract class DockateExtension(internal val project: Project) {
                 val local = it.qualifiedNameWithVersion
                 val remote = "$linkWithPort/$local"
                 val tag = tasks.register<Exec>("dockerImageTag${middle}For${name.capitalized()}") {
+                    dependsOn(allowRegistry)
                     dependsOn(it.build)
                     commandLine("docker", "image", "tag", local, remote)
                 }
@@ -187,7 +195,7 @@ abstract class DockateExtension(internal val project: Project) {
                 this.tags.set(images.associate { it.qualifiedNameWithVersion to "$linkWithPort/${it.qualifiedNameWithVersion}" })
             }
 
-            val base = "/$name/apps/${stack.lowercase()}/${env.name.lowercase()}"
+            val base = "/$workdir/apps/${stack.lowercase()}/${env.name.lowercase()}"
             val destination = tasks.register<Exec>("create${middle}DirectoryIn${name.taskify()}") {
                 val script = "mkdir $base/root -p && mkdir $base/data -p"
                 commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
@@ -202,23 +210,25 @@ abstract class DockateExtension(internal val project: Project) {
             val pull = tasks.register<Exec>("dockerComposePull${middle}In${name.taskify()}") {
                 dependsOn(imageTasks.map { (_, push) -> push })
                 dependsOn(copy)
-                val script = "cd $base && docker-compose pull"
+                val script = "cd $base && echo $pass | sudo -S docker compose pull"
                 commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
             }
 
             val volumes = tasks.register<Exec>("docker${middle}VolumesCreateIn${name.taskify()}") {
-                val script = "docker system prune --volumes -f && " + env.dcf.volumes.map { it.copy(env) }.joinToString(" && ") { "docker volume create ${it.name}" }
+                val script = "echo $pass | sudo -S docker system prune --volumes -f && " + env.dcf.volumes.map { it.copy(env) }.joinToString(" && ") {
+                    "sudo docker volume create ${it.name}"
+                }
                 commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
             }
 
             val deploy = tasks.register<Exec>("dockerStackDeploy${middle}In${name.taskify()}") {
                 dependsOn(copy, volumes, pull)
-                val script = "cd $base && docker stack deploy -c docker-compose.yml $stack-${env.name.lowercase()}"
+                val script = "cd $base && echo $pass | sudo -S docker stack deploy -c docker-compose.yml $stack-${env.name.lowercase()}"
                 commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
             }
 
             val remove = tasks.register<Exec>("dockerStackRemove${middle}In${name.taskify()}") {
-                val script = "docker stack remove $stack-${env.name.lowercase()}"
+                val script = "echo $pass | sudo -S docker stack remove $stack-${env.name.lowercase()}"
                 commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
             }
         }

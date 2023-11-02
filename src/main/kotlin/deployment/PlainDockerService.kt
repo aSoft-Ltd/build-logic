@@ -1,0 +1,4 @@
+package deployment
+
+class PlainDockerService {
+}

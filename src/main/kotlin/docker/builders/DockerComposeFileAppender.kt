@@ -22,6 +22,14 @@ internal class DockerComposeFileAppender(private val tab: String) {
         appendLine("environment", "=", service.environments)
         appendLine("volumes", ":", service.volumes.map { Mapping(it.outside.copy(env).name.lowercase(), it.inside) })
         appendPorts(service.ports)
+        if (service.dependencies.isNotEmpty()) appendDependencies(service.dependencies)
+    }
+
+    private fun StringBuilder.appendDependencies(services: List<Service<*>>) {
+        appendLine("${tab}${tab}depends_on:")
+        services.forEach {
+            appendLine("${tab}${tab}${tab}- ${it.name}")
+        }
     }
 
     private fun StringBuilder.appendLine(key: String, operator: String, items: List<Mapping<Any, Any>>) {

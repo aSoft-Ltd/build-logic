@@ -12,6 +12,7 @@ class RegistryServiceBuilder(name: String, private val i: String) : ServiceBuild
         restart = restart,
         volumes = volumes,
         ports = ports,
-        environments = environments
+        environments = environments,
+        dependencies = dependencies
     )
 }

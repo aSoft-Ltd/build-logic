@@ -12,6 +12,7 @@ class ImageServiceBuilder(name: String, private val i: LocalImageRef) : ServiceB
         restart = restart,
         volumes = volumes,
         ports = ports,
-        environments = environments
+        environments = environments,
+        dependencies = dependencies
     )
 }

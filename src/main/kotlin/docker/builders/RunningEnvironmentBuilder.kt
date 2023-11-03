@@ -70,6 +70,16 @@ class RunningEnvironmentBuilder {
         if (password != null) appendLine("""password = "$password"""")
     }
 
+    fun StringBuilder.database(
+        url: String,
+        name: String
+    ) {
+        appendLine()
+        appendLine("""[database]""")
+        appendLine("""url = "$url"""")
+        appendLine("""name = "$name"""")
+    }
+
     fun StringBuilder.recovery(
         name: String,
         address: String,

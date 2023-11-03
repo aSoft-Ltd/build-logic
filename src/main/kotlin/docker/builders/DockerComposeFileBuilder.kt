@@ -40,6 +40,7 @@ class DockerComposeFileBuilder(val environment: String) {
     ) = service(name, image) {
         restart("always")
         port(outside = port, inside = 27017)
+        expose(27017)
         environment(
             "MONGO_INITDB_ROOT_USERNAME" to username,
             "MONGO_INITDB_ROOT_PASSWORD" to password

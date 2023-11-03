@@ -7,6 +7,8 @@ import docker.models.Volume
 abstract class ServiceBuilder(val name: String) {
     protected val ports = mutableListOf<Mapping<Int, Int>>()
 
+    protected val exposes = mutableListOf<Int>()
+
     protected var restart: String? = null
 
     fun restart(value: String) {
@@ -26,6 +28,8 @@ abstract class ServiceBuilder(val name: String) {
     }
 
     fun port(outside: Int, inside: Int) = ports.add(Mapping(outside, inside))
+
+    fun expose(port: Int) = exposes.add(port)
 
     protected val environments = mutableListOf<Mapping<String, Any>>()
     fun environment(vararg variables: Pair<String, Any>) {

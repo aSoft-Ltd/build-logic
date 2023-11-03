@@ -62,8 +62,8 @@ class RunningEnvironmentBuilder {
         password: String? = null
     ) {
         appendLine()
-        appendLine("""[mail]""")
-        appendLine("""sender = "$sender"""")
+        appendLine("""[[mail.sender]]""")
+        appendLine("""type = "$sender"""")
         if (host != null) appendLine("""host = "$host"""")
         if (user != null) appendLine("""user = "$user"""")
         if (port != null) appendLine("""port = $port""")
@@ -83,6 +83,7 @@ class RunningEnvironmentBuilder {
         subject = subject,
         template = template
     )
+
     fun StringBuilder.verification(
         name: String,
         address: String,

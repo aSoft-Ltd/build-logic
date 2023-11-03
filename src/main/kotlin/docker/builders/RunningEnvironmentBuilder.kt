@@ -49,7 +49,7 @@ class RunningEnvironmentBuilder {
     }
 
     fun StringBuilder.console(format: String) {
-        appendLine("""[[logging.appenders]]""")
+        appendLine("""[[logging.appender]]""")
         appendLine("""type = "console"""")
         appendLine("""format.type = "$format"""")
     }

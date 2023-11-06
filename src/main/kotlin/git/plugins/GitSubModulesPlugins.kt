@@ -2,6 +2,7 @@ package git.plugins
 
 import git.tasks.gitAdd
 import git.tasks.gitCommit
+import git.tasks.gitFetch
 import git.tasks.gitStatus
 import java.io.File
 import org.gradle.api.Plugin
@@ -13,6 +14,7 @@ class GitSubModulesPlugins : Plugin<Project> {
         gitStatus(modules)
         gitAdd(modules)
         gitCommit(modules)
+        gitFetch(modules)
     }
 
     fun Project.submodules() = layout.projectDirectory.asFile.listFiles { file ->

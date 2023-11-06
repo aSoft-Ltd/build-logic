@@ -4,23 +4,26 @@ import git.models.GitProcess
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 
-abstract class GitMergeTask : GitModuleTask() {
+abstract class GitPushTask : GitModuleTask() {
 
     @get:Input
-    abstract val from: Property<String>
+    abstract val src: Property<String>
+
+    @get:Input
+    abstract val dst: Property<String>
 
     init {
-        git("merge", from.map { "origin/$it" })
+        git("push", "origin", src.flatMap { s -> dst.map { d -> "$s:$d" } })
     }
 
     override fun finish(processes: List<GitProcess>) = processes.forEach {
         val outText = it.out.readText()
         val errText = it.err.readText()
-        if (!outText.contains("Already up to date") && outText.isNotBlank()) {
+        if (!outText.contains("Everything up-to-date") && outText.isNotBlank()) {
             println(it.workdir.absolutePath)
             println(outText)
         }
-        if (errText.isNotBlank()) {
+        if (!errText.contains("Everything up-to-date") && errText.isNotBlank()) {
             println(it.workdir.absolutePath)
             System.err.println(errText)
         }

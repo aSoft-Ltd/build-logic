@@ -4,6 +4,7 @@ import git.tasks.GitAddTask
 import git.tasks.GitCommitTask
 import git.tasks.GitFetchTask
 import git.tasks.GitMergeTask
+import git.tasks.GitPushTask
 import git.tasks.GitStatusTask
 import java.io.File
 import org.gradle.api.Plugin
@@ -18,25 +19,32 @@ class GitSubModulesPlugins : Plugin<Project> {
             modules.set(mods)
             destination.set(build.dir("git/status"))
         }
-        tasks.register<GitAddTask>("gitAdd") {
+        val add = tasks.register<GitAddTask>("gitAdd") {
             modules.set(mods)
             destination.set(build.dir("git/add"))
         }
         tasks.register<GitCommitTask>("gitCommit") {
-            mustRunAfter("gitAdd")
+            dependsOn(add)
             modules.set(mods)
             message.set(providers.gradleProperty("message"))
             destination.set(layout.buildDirectory.dir("git/commit"))
         }
-        tasks.register<GitFetchTask>("gitFetch") {
+        val fetch = tasks.register<GitFetchTask>("gitFetch") {
             modules.set(mods)
             from.set(providers.gradleProperty("from"))
             destination.set(layout.buildDirectory.dir("git/fetch"))
         }
         tasks.register<GitMergeTask>("gitMerge") {
+            dependsOn(fetch)
             modules.set(mods)
             from.set(providers.gradleProperty("from"))
-            destination.set(layout.buildDirectory.dir("git/fetch"))
+            destination.set(layout.buildDirectory.dir("git/merge"))
+        }
+        tasks.register<GitPushTask>("gitPush") {
+            modules.set(mods)
+            src.set(providers.gradleProperty("src"))
+            dst.set(providers.gradleProperty("dst"))
+            destination.set(layout.buildDirectory.dir("git/push"))
         }
         Unit
     }

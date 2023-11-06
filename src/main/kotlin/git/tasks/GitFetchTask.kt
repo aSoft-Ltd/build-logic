@@ -3,7 +3,6 @@ package git.tasks
 import git.models.GitProcess
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
-import org.gradle.api.tasks.TaskAction
 
 abstract class GitFetchTask : GitModuleTask() {
 

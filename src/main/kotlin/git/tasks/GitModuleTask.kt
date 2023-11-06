@@ -53,6 +53,12 @@ abstract class GitModuleTask : DefaultTask() {
 
         }
 
+        postExecute(processes)
+
+        finish(processes)
+    }
+
+    open fun postExecute(processes: List<GitProcess>) {
         val fails = processes.filter {
             it.process.waitFor()
             it.process.exitValue() != 0
@@ -69,8 +75,6 @@ abstract class GitModuleTask : DefaultTask() {
             System.err.println(err)
             throw RuntimeException(err)
         }
-
-        finish(processes)
     }
 
     abstract fun finish(processes: List<GitProcess>)

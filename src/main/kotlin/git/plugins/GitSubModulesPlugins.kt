@@ -31,7 +31,7 @@ class GitSubModulesPlugins : Plugin<Project> {
 
         val commitSubmodules = tasks.register<GitCommitTask>("gitCommitSubModules") {
             dependsOn(addSubmodules)
-            modules.set(mods)
+            modules.set(submodules)
             message.set(providers.gradleProperty("message"))
             destination.set(build.dir("git/commit"))
         }

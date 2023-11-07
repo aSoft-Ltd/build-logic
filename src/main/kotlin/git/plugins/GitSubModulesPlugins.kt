@@ -64,27 +64,57 @@ class GitSubModulesPlugins : Plugin<Project> {
             dependsOn(commitSubmodules, commitRoot)
         }
 
+        val fetchs = submodules.map {
+            tasks.register<GitFetchTask>("gitFetch${it.name.taskify()}") {
+                mustRunAfter("gitAdd${it.name.taskify()}", "gitCommit${it.name.taskify()}", commitRoot)
+                modules.set(listOf(it))
+                from.set(providers.gradleProperty("from"))
+                destination.set(build.dir("git/fetch"))
+            }
+        }
+
         val fetch = tasks.register<GitFetchTask>("gitFetch") {
-            mustRunAfter(addSubmodules, commitSubmodules,commitRoot)
-            modules.set(mods)
+            dependsOn(fetchs)
+            modules.set(root)
             from.set(providers.gradleProperty("from"))
             destination.set(build.dir("git/fetch"))
         }
+
+        val merges = submodules.map {
+            tasks.register<GitMergeTask>("gitMerge${it.name.taskify()}") {
+                dependsOn("gitFetch${it.name.taskify()}")
+                modules.set(listOf(it))
+                from.set(providers.gradleProperty("from"))
+                destination.set(build.dir("git/merge"))
+            }
+        }
+
         val merge = tasks.register<GitMergeTask>("gitMerge") {
-            dependsOn(fetch)
-            modules.set(mods)
+            dependsOn(fetch, merges)
+            modules.set(root)
             from.set(providers.gradleProperty("from"))
             destination.set(build.dir("git/merge"))
         }
+
+        val pushs = submodules.map {
+            tasks.register<GitPushTask>("gitPush${it.name.taskify()}") {
+                mustRunAfter("gitMerge${it.name.taskify()}")
+                modules.set(listOf(it))
+                src.set(providers.gradleProperty("src"))
+                dst.set(providers.gradleProperty("dst"))
+                destination.set(build.dir("git/push"))
+            }
+        }
         tasks.register<GitPushTask>("gitPush") {
-            mustRunAfter(merge)
-            modules.set(mods)
+            dependsOn(pushs, merge)
+            modules.set(root)
             src.set(providers.gradleProperty("src"))
             dst.set(providers.gradleProperty("dst"))
             destination.set(build.dir("git/push"))
         }
         Unit
     }
+
     fun applyOld(target: Project) = with(target) {
         val mods = submodules()
         val root = listOf(mods.last())
@@ -125,7 +155,7 @@ class GitSubModulesPlugins : Plugin<Project> {
         }
 
         val fetch = tasks.register<GitFetchTask>("gitFetch") {
-            mustRunAfter(addSubmodules, commitSubmodules,commitRoot)
+            mustRunAfter(addSubmodules, commitSubmodules, commitRoot)
             modules.set(mods)
             from.set(providers.gradleProperty("from"))
             destination.set(build.dir("git/fetch"))

@@ -25,8 +25,7 @@ abstract class RemoveCodeBlockTask : DefaultTask() {
     init {
         blocks.convention(
             listOf(
-                "static get Companion(): {",
-                "static get ${'$'}serializer(): {",
+                "static get ",
                 "export namespace authenticator.events {",
                 "class ${'$'}serializer<",
                 "readonly __doNotUseOrImplementIt: {"

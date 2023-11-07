@@ -15,6 +15,5 @@ abstract class GitFetchTask : GitModuleTask() {
 
     override fun finish(processes: List<GitProcess>) = processes.forEach {
         System.err.println(it.err.readText())
-        System.out.println(it.out.readText())
     }
 }

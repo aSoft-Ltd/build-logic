@@ -15,16 +15,24 @@ abstract class GitStatusTask : GitModuleTask() {
         git("status")
     }
 
-    override fun finish(processes: List<GitProcess>) = processes.forEach {
-        val outText = it.out.readText()
-        val errText = it.err.readText()
-        if (!outText.contains("nothing to commit")) {
-            println(it.workdir.absolutePath)
-            println(outText)
+    override fun finish(processes: List<GitProcess>) {
+        var allClean = true
+        processes.forEach {
+            val outText = it.out.readText()
+            val errText = it.err.readText()
+            if (!outText.contains("nothing to commit")) {
+                allClean = false
+                println(it.workdir.absolutePath)
+                println(outText)
+            }
+            if (errText.isNotBlank()) {
+                allClean = false
+                println(it.workdir.absolutePath)
+                System.err.println(errText)
+            }
         }
-        if (errText.isNotBlank()) {
-            println(it.workdir.absolutePath)
-            System.err.println(errText)
+        if (allClean) {
+            println("root module and all its submodules are fully committed")
         }
     }
 }

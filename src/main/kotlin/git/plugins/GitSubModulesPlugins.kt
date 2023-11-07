@@ -14,23 +14,44 @@ import org.gradle.kotlin.dsl.register
 class GitSubModulesPlugins : Plugin<Project> {
     override fun apply(target: Project) = with(target) {
         val mods = submodules()
+        val root = listOf(mods.last())
+        val submodules = mods - root
         val build = layout.buildDirectory
         tasks.register<GitStatusTask>("gitStatus") {
             modules.set(mods)
             destination.set(build.dir("git/status"))
         }
-        val add = tasks.register<GitAddTask>("gitAdd") {
-            modules.set(mods)
+        val addSubmodules = tasks.register<GitAddTask>("gitAddSubModules") {
+            modules.set(submodules)
             destination.set(build.dir("git/add"))
         }
-        val commit = tasks.register<GitCommitTask>("gitCommit") {
-            dependsOn(add)
+
+        val commitSubmodules = tasks.register<GitCommitTask>("gitCommitSubModules") {
+            dependsOn(addSubmodules)
             modules.set(mods)
             message.set(providers.gradleProperty("message"))
             destination.set(build.dir("git/commit"))
         }
+
+        val addRoot = tasks.register<GitAddTask>("gitAddRoot") {
+            mustRunAfter(commitSubmodules)
+            modules.set(root)
+            destination.set(build.dir("git/add"))
+        }
+
+        val commitRoot = tasks.register<GitCommitTask>("gitCommitRoot") {
+            dependsOn(addRoot, commitSubmodules)
+            modules.set(mods)
+            message.set(providers.gradleProperty("message"))
+            destination.set(build.dir("git/commit"))
+        }
+
+        val commit = tasks.register("gitCommit") {
+            dependsOn(commitSubmodules, commitRoot)
+        }
+
         val fetch = tasks.register<GitFetchTask>("gitFetch") {
-            mustRunAfter(add, commit)
+            mustRunAfter(addSubmodules, commitSubmodules)
             modules.set(mods)
             from.set(providers.gradleProperty("from"))
             destination.set(build.dir("git/fetch"))

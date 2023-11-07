@@ -46,12 +46,12 @@ class GitSubModulesPlugins : Plugin<Project> {
             destination.set(build.dir("git/commit"))
         }
 
-        val commit = tasks.register("gitCommit") {
+        tasks.register("gitCommit") {
             dependsOn(commitSubmodules, commitRoot)
         }
 
         val fetch = tasks.register<GitFetchTask>("gitFetch") {
-            mustRunAfter(addSubmodules, commitSubmodules)
+            mustRunAfter(addSubmodules, commitSubmodules,commitRoot)
             modules.set(mods)
             from.set(providers.gradleProperty("from"))
             destination.set(build.dir("git/fetch"))

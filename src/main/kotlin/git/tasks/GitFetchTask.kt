@@ -13,7 +13,5 @@ abstract class GitFetchTask : GitModuleTask() {
         git("fetch", "origin", from)
     }
 
-    override fun finish(processes: List<GitProcess>) = processes.forEach {
-        System.err.println(it.err.readText())
-    }
+    override fun finish(processes: List<GitProcess>) = Unit
 }

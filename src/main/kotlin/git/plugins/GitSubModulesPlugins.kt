@@ -37,7 +37,7 @@ class GitSubModulesPlugins : Plugin<Project> {
         }
 
         val addRoot = tasks.register<GitAddTask>("gitAddRoot") {
-            mustRunAfter(addSubmodules)
+            mustRunAfter(addSubmodules, commitSubmodules)
             modules.set(root)
             destination.set(build.dir("git/add"))
         }

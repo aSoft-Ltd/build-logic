@@ -1,6 +1,5 @@
 package git.plugins
 
-import docker.taskify
 import git.tasks.GitAddTask
 import git.tasks.GitCommitTask
 import git.tasks.GitFetchTask

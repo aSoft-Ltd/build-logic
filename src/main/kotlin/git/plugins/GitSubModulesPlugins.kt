@@ -23,24 +23,26 @@ class GitSubModulesPlugins : Plugin<Project> {
             modules.set(mods)
             destination.set(build.dir("git/add"))
         }
-        tasks.register<GitCommitTask>("gitCommit") {
+        val commit = tasks.register<GitCommitTask>("gitCommit") {
             dependsOn(add)
             modules.set(mods)
             message.set(providers.gradleProperty("message"))
             destination.set(layout.buildDirectory.dir("git/commit"))
         }
         val fetch = tasks.register<GitFetchTask>("gitFetch") {
+            mustRunAfter(add,commit)
             modules.set(mods)
             from.set(providers.gradleProperty("from"))
             destination.set(layout.buildDirectory.dir("git/fetch"))
         }
-        tasks.register<GitMergeTask>("gitMerge") {
+        val merge = tasks.register<GitMergeTask>("gitMerge") {
             dependsOn(fetch)
             modules.set(mods)
             from.set(providers.gradleProperty("from"))
             destination.set(layout.buildDirectory.dir("git/merge"))
         }
         tasks.register<GitPushTask>("gitPush") {
+            mustRunAfter(merge)
             modules.set(mods)
             src.set(providers.gradleProperty("src"))
             dst.set(providers.gradleProperty("dst"))

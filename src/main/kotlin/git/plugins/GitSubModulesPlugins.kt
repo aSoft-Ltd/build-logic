@@ -37,24 +37,24 @@ class GitSubModulesPlugins : Plugin<Project> {
         }
 
         val addRoot = tasks.register<GitAddTask>("gitAddRoot") {
-            mustRunAfter(commitSubmodules)
+            mustRunAfter(addSubmodules)
             modules.set(root)
             destination.set(build.dir("git/add"))
         }
 
         val add = tasks.register("gitAdd") {
-            dependsOn(addSubmodules,addRoot)
+            dependsOn(addSubmodules, addRoot)
         }
 
         val commitRoot = tasks.register<GitCommitTask>("gitCommitRoot") {
-            dependsOn(addRoot, commitSubmodules)
+            mustRunAfter(addRoot, commitSubmodules)
             modules.set(root)
             message.set(providers.gradleProperty("message"))
             destination.set(build.dir("git/commit"))
         }
 
         tasks.register("gitCommit") {
-            dependsOn(commitSubmodules, commitRoot)
+            dependsOn(addSubmodules, commitSubmodules, addRoot, commitRoot)
         }
 
         val fetch = tasks.register<GitFetchTask>("gitFetch") {

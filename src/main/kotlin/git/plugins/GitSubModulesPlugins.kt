@@ -82,7 +82,7 @@ class GitSubModulesPlugins : Plugin<Project> {
 
         val merges = submodules.map {
             tasks.register<GitMergeTask>("gitMerge${it.name.taskify()}") {
-                dependsOn("gitFetch${it.name.taskify()}")
+                dependsOn("gitFetch${it.name.taskify()}", fetch)
                 modules.set(listOf(it))
                 from.set(providers.gradleProperty("from"))
                 destination.set(build.dir("git/merge"))
@@ -98,7 +98,7 @@ class GitSubModulesPlugins : Plugin<Project> {
 
         val pushs = submodules.map {
             tasks.register<GitPushTask>("gitPush${it.name.taskify()}") {
-                mustRunAfter("gitMerge${it.name.taskify()}")
+                mustRunAfter("gitMerge${it.name.taskify()}", merge)
                 modules.set(listOf(it))
                 src.set(providers.gradleProperty("src"))
                 dst.set(providers.gradleProperty("dst"))

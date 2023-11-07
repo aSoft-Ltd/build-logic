@@ -42,6 +42,10 @@ class GitSubModulesPlugins : Plugin<Project> {
             destination.set(build.dir("git/add"))
         }
 
+        val add = tasks.register("gitAdd") {
+            dependsOn(addSubmodules,addRoot)
+        }
+
         val commitRoot = tasks.register<GitCommitTask>("gitCommitRoot") {
             dependsOn(addRoot, commitSubmodules)
             modules.set(root)

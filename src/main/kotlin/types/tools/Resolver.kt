@@ -29,26 +29,44 @@ internal class Resolver {
     }
 
     private fun String.checkImports(): Set<Import> {
+        if (hasComment()) return removeComments().checkImports()
         if (!contains(".")) return emptySet()
         if (contains("=")) return emptySet()
 
         if (contains(": ")) { // type
-            return split(": ").flatMap {
-                it.substringBefore(")")
-                    .substringBefore(";")
-                    .tokenImportCheck()
+            return split(": ").map {
+                if (contains("readonly")) {
+                    it.substringAfter("(").substringBefore(")")
+                } else {
+                    it.substringBefore(", ")
+                        .substringAfter("(")
+                        .substringBefore(")")
+                }
+            }.flatMap {
+                it.split(" & ")
+            }.map {
+                it.substringBefore(";")
+            }.flatMap {
+                it.tokenImportCheck()
             }.toSet()
         }
 
         if (contains("} & ")) { // end of a const block
-            return substringAfter("} & ").substringBefore(";").tokenImportCheck()
+            return substringAfter("} & ").substringBefore(";").split(" & ").flatMap {
+                it.tokenImportCheck()
+            }.toSet()
         }
 
         return split("extends ").flatMap {
             it.split("implements ")
         }.flatMap {
+            it.split(", ")
+        }.flatMap {
+            it.split("<")
+        }.flatMap {
+            it.split(">")
+        }.flatMap {
             it.substringBefore(">")
-                .substringBefore(",")
                 .substringBefore(" {")
                 .tokenImportCheck()
         }.toSet()
@@ -56,7 +74,6 @@ internal class Resolver {
 
     private fun String.tokenImportCheck(): Set<Import> {
         if (!contains(".")) return emptySet()
-        if (indexOf(".") in indexOf("/*")..indexOf("*/")) return emptySet()
 
         // kase.Progress
         if (!contains("<")) {
@@ -74,5 +91,13 @@ internal class Resolver {
         val innerTokens = inner.split(", ")
         val outer = replace("<$inner>", "")
         return (innerTokens.flatMap { it.tokenImportCheck() } + outer.tokenImportCheck()).toSet()
+    }
+
+    private fun String.hasComment() = contains("/*") && contains("*/")
+    private fun String.removeComments(): String {
+        if (!hasComment()) return this
+
+        val comment = substringAfter("/*").substringBefore("*/")
+        return replace("/*$comment*/", "").removeComments()
     }
 }

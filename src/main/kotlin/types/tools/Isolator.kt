@@ -8,7 +8,7 @@ class Isolator(private val excludeFunctions: Boolean = true) {
 
     private fun isolate(block: RawCodeBlock): List<IsolatedCodeBlock> {
         val blocks = mutableListOf<IsolatedCodeBlock>()
-        val namespace = block.namespace.replace(".", "/")
+        val namespace = block.namespace
         val opener = block.body.first()
         val closer = block.body.last()
         val lines = block.body.subList(1, block.body.lastIndex)
@@ -19,8 +19,8 @@ class Isolator(private val excludeFunctions: Boolean = true) {
             if (line.contains("function ") && !excludeFunctions) {
                 val identifier = line.substringAfter("function ").substringBefore("(")
                 val b = IsolatedCodeBlock(
-                    identifier = identifier,
                     namespace = namespace,
+                    identifier = identifier,
                     body = listOf(line)
                 )
                 i++

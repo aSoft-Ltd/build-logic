@@ -4,7 +4,12 @@ import types.ast.IsolatedCodeBlock
 import types.ast.RawCodeBlock
 
 class Isolator(private val excludeFunctions: Boolean = true) {
-    fun isolate(blocks: List<RawCodeBlock>): List<IsolatedCodeBlock> = blocks.flatMap { isolate(it) }
+    fun isolate(blocks: List<RawCodeBlock>): List<IsolatedCodeBlock> = blocks.flatMap { isolate(it) }.filterNot {
+        it.namespace.contains(" ")
+                || it.namespace.contains("*")
+                || it.identifier.isBlank()
+                || it.identifier.contains("*")
+    }
 
     private fun isolate(block: RawCodeBlock): List<IsolatedCodeBlock> {
         val blocks = mutableListOf<IsolatedCodeBlock>()
@@ -29,7 +34,7 @@ class Isolator(private val excludeFunctions: Boolean = true) {
                 val b = getBlock(type = "const", from = lines.subList(i, size))
                 i += b.body.size
                 blocks.add(b)
-            }else if (line.contains("interface ")) {
+            } else if (line.contains("interface ")) {
                 val b = getBlock(type = "interface", from = lines.subList(i, size))
                 i += b.body.size
                 blocks.add(b)

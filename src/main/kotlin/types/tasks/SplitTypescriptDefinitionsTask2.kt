@@ -23,6 +23,8 @@ abstract class SplitTypescriptDefinitionsTask2 : DefaultTask() {
 
     @TaskAction
     fun split() {
+        val definitions = output.get().asFile
+        definitions.deleteRecursively()
         val blocks = Parser().parse(input.asFile.get())
         val isolated = Isolator().isolate(blocks)
         val resolved = Resolver().resolve(isolated) + ResolvedCodeBlock(
@@ -32,7 +34,7 @@ abstract class SplitTypescriptDefinitionsTask2 : DefaultTask() {
             body = listOf("export type Nullable<T> = T | undefined | null")
         )
         resolved.forEach {
-            val file = output.get().file("./${it.path}/${it.identifier}.d.ts").asFile
+            val file = File(definitions,"./${it.path}/${it.identifier}.d.ts")
             file.parentFile.mkdirs()
             file.createNewFile()
             file.writeText(it.toCode())

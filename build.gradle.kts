@@ -4,4 +4,9 @@ plugins {
 
 repositories {
     mavenCentral()
+    gradlePluginPortal()
+}
+
+dependencies {
+    testImplementation(kotlin("test"))
 }

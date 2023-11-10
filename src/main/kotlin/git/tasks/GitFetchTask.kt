@@ -13,5 +13,22 @@ abstract class GitFetchTask : GitModuleTask() {
         git("fetch", "origin", from)
     }
 
+    override fun onStart(process: GitProcess) {
+        val text = buildString {
+            appendLine("Workdir: ${process.workdir}")
+            appendLine("Fetching: ${from.get()}")
+            appendLine("Status: 🔵 Started")
+        }
+        println(text)
+    }
+
+    override fun onFinished(process: GitProcess) {
+        val text = buildString {
+            appendLine("Workdir: ${process.workdir}")
+            appendLine("Fetching: ${from.get()}")
+            appendLine("Status: ✅ Finished")
+        }
+        println(text)
+    }
     override fun finish(processes: List<GitProcess>) = Unit
 }

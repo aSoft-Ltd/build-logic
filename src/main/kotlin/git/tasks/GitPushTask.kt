@@ -16,6 +16,24 @@ abstract class GitPushTask : GitModuleTask() {
         git("push", "origin", src.flatMap { s -> dst.map { d -> "$s:$d" } })
     }
 
+    override fun onStart(process: GitProcess) {
+        val text = buildString {
+            appendLine("Workdir: ${process.workdir}")
+            appendLine("Pushing: ${src.get()} --> ${dst.get()}")
+            appendLine("Status: 🔵 Started")
+        }
+        println(text)
+    }
+
+    override fun onFinished(process: GitProcess) {
+        val text = buildString {
+            appendLine("Workdir: ${process.workdir}")
+            appendLine("Pushing: ${src.get()} --> ${dst.get()}")
+            appendLine("Status: ✅ Finished")
+        }
+        println(text)
+    }
+
     override fun finish(processes: List<GitProcess>) = processes.forEach {
         val outText = it.out.readText()
         val errText = it.err.readText()

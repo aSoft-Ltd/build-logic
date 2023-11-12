@@ -98,7 +98,7 @@ internal fun Project.addInstallDockerTasks(
 
     tasks.register("setupDockerIn${name.capitalized()}Server") {
         group = "deployment"
-        dependsOn(install, postInstall, createDockerRegistryWorkDir)
+        dependsOn(createDockerRegistryWorkDir)
     }
 
     val generateDockerComposeFile = tasks.register<Exec>("generateDockerComposeFileIn${name.capitalized()}Server") {

@@ -6,7 +6,7 @@ fun PlainDockerComposeFile.toRawText(tab: String) = buildString {
     appendLine("""version: "$version"""")
     if (name != null) {
         appendLine()
-        appendLine("""name: "$name"""")
+        appendLine("""name: $name""")
     }
     appendLine(services, tab)
     appendLine(volumes, tab)
@@ -14,6 +14,7 @@ fun PlainDockerComposeFile.toRawText(tab: String) = buildString {
 
 @JvmName("appendServices")
 private fun StringBuilder.appendLine(services: List<PlainDockerService>, tab: String) {
+    if(services.isEmpty()) return
     appendLine()
     appendLine("services:")
     for (service in services) appendLine(service, tab)
@@ -21,6 +22,7 @@ private fun StringBuilder.appendLine(services: List<PlainDockerService>, tab: St
 
 @JvmName("appendVolumes")
 private fun StringBuilder.appendLine(volumes: List<PlainDockerVolume>, tab: String) {
+    if(volumes.isEmpty()) return
     appendLine()
     appendLine("volumes:")
     for (volume in volumes) appendLine("$tab${volume.name}:")

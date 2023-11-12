@@ -1,6 +1,7 @@
 package docker
 
 import deployment.builders.DockerfileBuilder
+import deployment.builders.toRawText
 import docker.builders.DockerComposeFileBuilder2
 import docker.models.DeploymentEnvironment2
 import docker.models.Isolate
@@ -10,6 +11,7 @@ import docker.models.LocalImageRef2
 import docker.models.RunningEnvironment
 import docker.models.ScopedDeploymentEnvironment2
 import docker.models.ScopedDockerComposeFile
+import docker.models.map
 import docker.tasks.AllowRegistryTask
 import docker.tasks.CreateDockerComposeFileTask
 import org.gradle.api.Project
@@ -26,12 +28,6 @@ import utils.taskify
 abstract class DockateExtension(internal val project: Project) {
     abstract val output: DirectoryProperty
 
-    private val environments = mutableListOf<RunningEnvironment>()
-
-    private val images = mutableListOf<LocalImageRef>()
-
-    private var stack: String = ""
-
     fun <T : Isolate> Project.image(
         environments: List<DeploymentEnvironment2<T>>,
         name: String = this.name,
@@ -41,7 +37,7 @@ abstract class DockateExtension(internal val project: Project) {
     ): LocalImageRef2<T> {
         val images = mutableListOf<LocalImage2<T>>()
         environments.map {
-            it.toScoped(layout.buildDirectory.dir("dockate/images/${it.path}"))
+            it.toScoped(output.dir("${it.path}/images"))
         }.forEach { environment ->
             val imageTag = "${environment.isolate.name}-${name}-${environment.name}".hyphenize()
             val versionedImageTag = "$imageTag:$version"
@@ -101,7 +97,7 @@ abstract class DockateExtension(internal val project: Project) {
         }
 
         val scopes = environments.map {
-            it.toScoped(layout.buildDirectory.dir("dockate/compose/${it.path}"))
+            it.toScoped(output.dir("${it.path}/compose"))
         }
 
         for (env in scopes) {
@@ -131,178 +127,112 @@ abstract class DockateExtension(internal val project: Project) {
         }
 
         for (comp in compose) {
-            val imgs = comp.services.filter { it.image.contains(comp.environment.name) }.map {
-                val trail = "${it.name}${comp.environment.taskNameTrail}"
+            val services = comp.services.filter { it.image.contains(comp.environment.name) }
+            val imgs = services.map {
+                val trail = "${it.name}-${name.capitalized()}-${comp.environment.taskNameTrail}".taskify()
 
                 val local = it.image
                 val remote = "$linkWithPort/$local"
 
-                val tag = tasks.register<Exec>("dockerImageTag${trail}For${name.capitalized()}") {
+                val tag = tasks.register<Exec>("dockerImageTag${trail}") {
                     dependsOn(allowRegistry)
                     comp.deps[it.name]?.forEach { dep -> dependsOn(dep) }
                     commandLine("docker", "image", "tag", local, remote)
                 }
 
-                val push = tasks.register<Exec>("dockerImagePush${trail}To${name.taskify()}") {
+                val push = tasks.register<Exec>("dockerImagePush${trail}") {
                     dependsOn(tag)
                     commandLine("docker", "image", "push", remote)
                 }
                 tag to push
             }
 
-            val tag = tasks.register("dockerImagesTag${comp.environment.taskNameTrail}For${name.capitalized()}") {
+            val trail = "$name${comp.environment.taskNameTrail}".taskify()
+            val tag = tasks.register("dockerImagesTag$trail") {
                 group = "Dockate Image Tag"
                 dependsOn(imgs.map { it.first })
             }
 
-            val push = tasks.register("dockerImagesPush${comp.environment.taskNameTrail}To${name.capitalized()}") {
+            val push = tasks.register("dockerImagesPush$trail") {
                 group = "Dockate Image Push"
                 dependsOn(imgs.map { it.second })
             }
 
-//            val images = images.flatMap { it.images }.filter { it.environment.name == comp.name }
-//            val imageTasks = images.map {
-//                val middle = it.qualifiedNameWithoutVersion.taskify()
-//                val local = it.qualifiedNameWithVersion
-//                val remote = "$linkWithPort/$local"
-//                val tag = tasks.register<Exec>("dockerImageTag${middle}For${name.capitalized()}") {
-//                    dependsOn(allowRegistry)
-//                    dependsOn(it.build)
-//                    commandLine("docker", "image", "tag", local, remote)
-//                }
-//
-//                val push = tasks.register<Exec>("dockerImagePush${middle}To${name.taskify()}") {
-//                    dependsOn(tag)
-//                    commandLine("docker", "image", "push", remote)
-//                }
-//
-//                tag to push
-//            }
-
-//            val middle = "${stack.capitalized()}${comp.name.taskify()}"
-//            val location = output.dir("stacks/$name/$stack-${comp.name}".lowercase())
-//            val create = tasks.register<CreateDockerComposeFileTask>("create${middle}DockerComposeFileFor${name.taskify()}") {
-//                this.directory.set(location)
-////                this.content.set(env.dcf.build(env))
-//                this.tags.set(images.associate { it.qualifiedNameWithVersion to "$linkWithPort/${it.qualifiedNameWithVersion}" })
-//            }
-//
-//            val base = "/$workdir/apps/${stack.lowercase()}/${comp.name.lowercase()}"
-//            val destination = tasks.register<Exec>("create${middle}DirectoryIn${name.taskify()}") {
-//                val script = "mkdir $base/root -p && mkdir $base/data -p"
-//                commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
-//            }
-//
-//            val copy = tasks.register<Exec>("copy${middle}DockerComposeFileTo${name.taskify()}") {
-//                dependsOn(create, destination)
-//                workingDir(location)
-//                commandLine("sshpass", "-p", pass, "scp", "./docker-compose.yml", "$user@$linkWithoutPort:$base/docker-compose.yml")
-//            }
-
-//            val pull = tasks.register<Exec>("dockerComposePull${middle}In${name.taskify()}") {
-//                dependsOn(imageTasks.map { (_, push) -> push })
-//                dependsOn(copy)
-//                val script = "cd $base && echo $pass | sudo -S docker compose pull"
-//                commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
-//            }
-
-//            val volumes = tasks.register<Exec>("docker${middle}VolumesCreateIn${name.taskify()}") {
-//                val script = "echo $pass | sudo -S docker system prune --volumes -f && " + env.dcf.volumes.map { it.copy(env) }.joinToString(" && ") {
-//                    "sudo docker volume create ${it.name}"
-//                }
-//                commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
-//            }
-//
-//            val deploy = tasks.register<Exec>("dockerStackDeploy${middle}In${name.taskify()}") {
-//                dependsOn(copy, volumes, pull)
-//                val script = "cd $base && echo $pass | sudo -S docker stack deploy -c docker-compose.yml $stack-${env.name.lowercase()}"
-//                commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
-//            }
-
-//            val remove = tasks.register<Exec>("dockerStackRemove${middle}In${name.taskify()}") {
-//                val script = "echo $pass | sudo -S docker stack remove $stack-${comp.name.lowercase()}"
-//                commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
-//            }
-        }
-
-        fun Project.registry(
-            name: String,
-            url: String,
-            user: String,
-            pass: String,
-            workdir: String = name,
-        ) {
-            val linkWithPort = url.split("//").lastOrNull() ?: url
-            val linkWithoutPort = linkWithPort.split(":").firstOrNull() ?: linkWithPort
-
-            val allowRegistry = tasks.register<AllowRegistryTask>("allowRegistryFor${name.capitalized()}") {
-                registry.set(linkWithPort)
+            val location = output.dir("${comp.environment.path}/stacks/$name")
+            val createComposeForDockerCompose = tasks.register<CreateDockerComposeFileTask>("createDockerComposeFileDockerCompose$trail") {
+                group = "Dockate Create Dockerfile"
+                directory.set(location)
+                content.set(comp.map(registry = linkWithPort, clearName = false).toRawText("  "))
             }
 
-            for (env in compose) {
-                val images = images.flatMap { it.images }.filter { it.environment.name == env.name }
-                val imageTasks = images.map {
-                    val middle = it.qualifiedNameWithoutVersion.taskify()
-                    val local = it.qualifiedNameWithVersion
-                    val remote = "$linkWithPort/$local"
-                    val tag = tasks.register<Exec>("dockerImageTag${middle}For${name.capitalized()}") {
-                        dependsOn(allowRegistry)
-                        dependsOn(it.build)
-                        commandLine("docker", "image", "tag", local, remote)
-                    }
+            val createComposeFileForDockerStack = tasks.register<CreateDockerComposeFileTask>("createDockerComposeStackFileDockerStack$trail") {
+                group = "Dockate Create Dockerfile"
+                directory.set(location)
+                filename.set("docker-stack-compose.yml")
+                content.set(comp.map(registry = linkWithPort, clearName = true).toRawText("  "))
+            }
 
-                    val push = tasks.register<Exec>("dockerImagePush${middle}To${name.taskify()}") {
-                        dependsOn(tag)
-                        commandLine("docker", "image", "push", remote)
-                    }
+            val base = "$workdir/apps/${comp.environment.path}"
+            val destination = tasks.register<Exec>("createDirectory${trail}") {
+                group = "Dockate Create Directory"
+                val script = listOf(
+                    "mkdir $base/root -p",
+                    "mkdir $base/data -p"
+                ).joinToString(" && ")
+                commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
+            }
 
-                    tag to push
+            val copyComposeFileForDockerCompose = tasks.register<Exec>("copyDockerComposeFileDockerCompose$trail") {
+                group = "Dockate Copy"
+                dependsOn(createComposeForDockerCompose, destination)
+                workingDir(location)
+                commandLine("sshpass", "-p", pass, "scp", "./docker-compose.yml", "$user@$linkWithoutPort:$base/docker-compose.yml")
+            }
+
+            val copyComposeFileForDockerStack = tasks.register<Exec>("copyDockerComposeFileDockerStack$trail") {
+                group = "Dockate Copy"
+                dependsOn(createComposeFileForDockerStack, destination)
+                workingDir(location)
+                commandLine("sshpass", "-p", pass, "scp", "./docker-stack-compose.yml", "$user@$linkWithoutPort:$base/docker-stack-compose.yml")
+            }
+
+            val pull = tasks.register<Exec>("dockerComposePull$trail") {
+                group = "Dockate Pull"
+                dependsOn(imgs.map { (_, push) -> push })
+                dependsOn(copyComposeFileForDockerCompose)
+                val script = "cd $base && echo $pass | sudo -S docker compose pull"
+                commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
+            }
+
+            val volumes = tasks.register<Exec>("dockerVolumesCreate$trail") {
+                group = "Dockate Create Volume"
+                val script = "echo $pass | sudo -S docker system prune --volumes -f && " + comp.volumes.joinToString(" && ") {
+                    "sudo docker volume create ${it.name}"
                 }
+                commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
+            }
 
-                val middle = "${stack.capitalized()}${env.name?.taskify()}"
-                val location = output.dir("stacks/$name/$stack-${env.name}".lowercase())
-                val create = tasks.register<CreateDockerComposeFileTask>("create${middle}DockerComposeFileFor${name.taskify()}") {
-                    this.directory.set(location)
-//                this.content.set(env.dcf.build(env))
-                    this.tags.set(images.associate { it.qualifiedNameWithVersion to "$linkWithPort/${it.qualifiedNameWithVersion}" })
-                }
+            val up = tasks.register<Exec>("dockerComposeUp$trail") {
+                dependsOn(copyComposeFileForDockerCompose, volumes, pull)
+                val script = "cd $base && echo $pass | sudo -S docker compose up -d --renew-anon-volumes"
+                commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
+            }
 
-                val base = "/$workdir/apps/${stack.lowercase()}/${env.name?.lowercase()}"
-                val destination = tasks.register<Exec>("create${middle}DirectoryIn${name.taskify()}") {
-                    val script = "mkdir $base/root -p && mkdir $base/data -p"
-                    commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
-                }
+            val down = tasks.register<Exec>("dockerComposeDown$trail") {
+                dependsOn(copyComposeFileForDockerCompose)
+                val script = "cd $base && echo $pass | sudo -S docker compose down"
+                commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
+            }
 
-                val copy = tasks.register<Exec>("copy${middle}DockerComposeFileTo${name.taskify()}") {
-                    dependsOn(create, destination)
-                    workingDir(location)
-                    commandLine("sshpass", "-p", pass, "scp", "./docker-compose.yml", "$user@$linkWithoutPort:$base/docker-compose.yml")
-                }
+            val deploy = tasks.register<Exec>("dockerStackDeploy$trail") {
+                dependsOn(copyComposeFileForDockerStack, volumes, pull)
+                val script = "cd $base && echo $pass | sudo -S docker stack deploy -c docker-stack-compose.yml ${comp.environment.qualifier.dashed}"
+                commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
+            }
 
-                val pull = tasks.register<Exec>("dockerComposePull${middle}In${name.taskify()}") {
-                    dependsOn(imageTasks.map { (_, push) -> push })
-                    dependsOn(copy)
-                    val script = "cd $base && echo $pass | sudo -S docker compose pull"
-                    commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
-                }
-
-//            val volumes = tasks.register<Exec>("docker${middle}VolumesCreateIn${name.taskify()}") {
-//                val script = "echo $pass | sudo -S docker system prune --volumes -f && " + env.dcf.volumes.map { it.copy(env) }.joinToString(" && ") {
-//                    "sudo docker volume create ${it.name}"
-//                }
-//                commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
-//            }
-//
-//            val deploy = tasks.register<Exec>("dockerStackDeploy${middle}In${name.taskify()}") {
-//                dependsOn(copy, volumes, pull)
-//                val script = "cd $base && echo $pass | sudo -S docker stack deploy -c docker-compose.yml $stack-${env.name.lowercase()}"
-//                commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
-//            }
-
-                val remove = tasks.register<Exec>("dockerStackRemove${middle}In${name.taskify()}") {
-                    val script = "echo $pass | sudo -S docker stack remove $stack-${env.name?.lowercase()}"
-                    commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
-                }
+            val remove = tasks.register<Exec>("dockerStackRemove$trail") {
+                val script = "echo $pass | sudo -S docker stack remove ${comp.environment.qualifier.dashed}"
+                commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
             }
         }
     }

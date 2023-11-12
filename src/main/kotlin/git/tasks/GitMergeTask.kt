@@ -13,6 +13,24 @@ abstract class GitMergeTask : GitModuleTask() {
         git("merge", from.map { "origin/$it" })
     }
 
+    override fun onStart(process: GitProcess) {
+        val text = buildString {
+            appendLine("Workdir: ${process.workdir}")
+            appendLine("Merging: ${from.get()}")
+            appendLine("Status: 🔵 Started")
+        }
+        println(text)
+    }
+
+    override fun onFinished(process: GitProcess) {
+        val text = buildString {
+            appendLine("Workdir: ${process.workdir}")
+            appendLine("Merging: ${from.get()}")
+            appendLine("Status: 🟢 Finished")
+        }
+        println(text)
+    }
+
     override fun finish(processes: List<GitProcess>) = processes.forEach {
         val outText = it.out.readText()
         val errText = it.err.readText()

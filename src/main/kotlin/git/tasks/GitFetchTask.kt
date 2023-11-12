@@ -26,7 +26,7 @@ abstract class GitFetchTask : GitModuleTask() {
         val text = buildString {
             appendLine("Workdir: ${process.workdir}")
             appendLine("Fetching: ${from.get()}")
-            appendLine("Status: ✅ Finished")
+            appendLine("Status: 🟢 Finished")
         }
         println(text)
     }

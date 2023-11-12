@@ -2,7 +2,7 @@ package docker.builders
 
 import docker.models.RunningEnvironment
 import docker.models.TextFile
-import docker.taskify
+import utils.taskify
 import docker.tasks.CreateTextFileTask
 import org.gradle.api.Project
 import org.gradle.api.file.DirectoryProperty
@@ -28,7 +28,7 @@ class RunningEnvironmentBuilder {
             val remove = tasks.register<Delete>("remove$taskName") {
                 delete(location)
             }
-            TextFile(path, content, create, remove)
+            TextFile(path, create, remove)
         }
         val taskName = "${name.capitalized()}TextFiles"
         tasks.register("create$taskName") {

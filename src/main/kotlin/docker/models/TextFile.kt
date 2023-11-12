@@ -6,7 +6,6 @@ import org.gradle.api.tasks.TaskProvider
 
 class TextFile(
     val path: String,
-    val content: String,
     val create: TaskProvider<CreateTextFileTask>,
     val remove: TaskProvider<Delete>
 )

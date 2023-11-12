@@ -1,6 +1,8 @@
 package deployment.builders
 
-class PlainDockerComposeFile(
+open class PlainDockerComposeFile(
     val version: Double,
-    val services: List<PlainDockerService>
+    val name: String?,
+    val services: List<PlainDockerService>,
+    val volumes: List<PlainDockerVolume>
 )

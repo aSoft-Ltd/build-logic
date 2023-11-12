@@ -4,7 +4,12 @@ import docker.models.Mapping
 
 fun PlainDockerComposeFile.toRawText(tab: String) = buildString {
     appendLine("""version: "$version"""")
+    if (name != null) {
+        appendLine()
+        appendLine("""name: "$name"""")
+    }
     appendLine(services, tab)
+    appendLine(volumes, tab)
 }
 
 @JvmName("appendServices")
@@ -12,6 +17,13 @@ private fun StringBuilder.appendLine(services: List<PlainDockerService>, tab: St
     appendLine()
     appendLine("services:")
     for (service in services) appendLine(service, tab)
+}
+
+@JvmName("appendVolumes")
+private fun StringBuilder.appendLine(volumes: List<PlainDockerVolume>, tab: String) {
+    appendLine()
+    appendLine("volumes:")
+    for (volume in volumes) appendLine("$tab${volume.name}:")
 }
 
 private fun StringBuilder.appendLine(service: PlainDockerService, tab: String) {
@@ -25,6 +37,8 @@ private fun StringBuilder.appendLine(service: PlainDockerService, tab: String) {
     }
     appendLine("environment", operator = "=", service.environments, tab)
     appendLine("ports", operator = ":", service.ports, tab)
+    appendLine("expose", service.exposes, tab)
+    appendLine("depends_on", service.dependencies, tab)
     appendLine("volumes", operator = ":", service.volumes, tab)
     appendLine()
 }
@@ -33,4 +47,10 @@ private fun StringBuilder.appendLine(key: String, operator: String, items: List<
     if (items.isEmpty()) return
     appendLine("$tab$tab$key:")
     items.forEach { appendLine("$tab$tab${tab}- ${it.outside}${operator}${it.inside}") }
+}
+
+private fun StringBuilder.appendLine(key: String, items: List<Any>, tab: String) {
+    if (items.isEmpty()) return
+    appendLine("$tab$tab$key:")
+    items.forEach { appendLine("$tab$tab${tab}- $it") }
 }

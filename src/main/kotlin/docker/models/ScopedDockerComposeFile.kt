@@ -8,5 +8,6 @@ class ScopedDockerComposeFile<T : Isolate>(
     name: String?,
     services: List<PlainDockerService>,
     volumes: ScopedDockerVolumes,
+    val deps: Map<String,List<Any>>,
     val environment: ScopedDeploymentEnvironment2<T>
 ) : PlainDockerComposeFile(version, name, services, volumes.volumes)

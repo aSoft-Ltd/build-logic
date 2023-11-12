@@ -29,7 +29,7 @@ abstract class GitPushTask : GitModuleTask() {
         val text = buildString {
             appendLine("Workdir: ${process.workdir}")
             appendLine("Pushing: ${src.get()} --> ${dst.get()}")
-            appendLine("Status: ✅ Finished")
+            appendLine("Status: 🟢 Finished")
         }
         println(text)
     }

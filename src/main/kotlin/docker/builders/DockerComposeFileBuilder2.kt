@@ -126,6 +126,7 @@ class DockerComposeFileBuilder2 : PlainDockerComposeFileBuilder() {
             name = dcf.name,
             services = dcf.services,
             volumes = scopedVolumes,
+            deps = deps,
             environment = env
         )
     }

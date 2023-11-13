@@ -1,5 +1,7 @@
 package deployment.builders
 
+import docker.builders.PlainDockerComposeFileBuilder
+
 fun dockerComposeFile(
     workdir: String,
     npm: Boolean,

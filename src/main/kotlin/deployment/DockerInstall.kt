@@ -1,7 +1,7 @@
 package deployment
 
 import deployment.builders.dockerComposeFile
-import deployment.builders.toRawText
+import docker.builders.toRawText
 import org.gradle.api.Project
 import org.gradle.api.tasks.Exec
 import org.gradle.configurationcache.extensions.capitalized

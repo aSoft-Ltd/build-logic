@@ -8,6 +8,10 @@ import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.TaskAction
+import types.ast.ResolvedCodeBlock
+import types.tools.Isolator
+import types.tools.Parser
+import types.tools.Resolver
 
 abstract class SplitTypescriptDefinitionsTask : DefaultTask() {
 
@@ -15,98 +19,45 @@ abstract class SplitTypescriptDefinitionsTask : DefaultTask() {
     abstract val input: RegularFileProperty
 
     @get:OutputDirectory
-    val output: Provider<Directory> = project.layout.buildDirectory.dir("typescript/output")
-
-    class DeclarationFile(
-        val imports: MutableList<String> = mutableListOf(),
-        val lines: MutableList<String> = mutableListOf()
-    )
+    val output: Provider<Directory> = project.layout.buildDirectory.dir("typescript/definitions")
 
     @TaskAction
     fun split() {
-        val dir = File(output.get().asFile, "types").apply { mkdir() }
-        val namespaces = detectNameSpaceCodeBlocks(input.get().asFile.readLines())
-        namespaces.forEach { (namespace, code) ->
-            val subDir = File(dir, namespace).apply { mkdir() }
-            val file = File(subDir, "$namespace.d.ts").apply { createNewFile() }
-            val imports = code.imports.filter {
-                it != namespace && it in namespaces.keys
-            }.toSet().map { """import { $it } from '../$it/$it'""" }
-
-            val top = ((if (imports.isNotEmpty()) imports + listOf("") else emptyList()) + listOf(
-                "type Nullable<T> = T | null | undefined",
-                ""
-            )).joinToString("\n")
-
-            val body = code.lines.joinToString("\n") // .replace("}\nexport declare namespace $namespace {", "")
-
-            file.writeText("$top\n$body")
+        val definitions = output.get().asFile
+        definitions.deleteRecursively()
+        val blocks = Parser().parse(input.asFile.get())
+        val isolated = Isolator().isolate(blocks)
+        val resolved = Resolver().resolve(isolated) + ResolvedCodeBlock(
+            namespace = "utils",
+            imports = emptySet(),
+            identifier = "Nullable",
+            body = listOf("export type Nullable<T> = T | undefined | null")
+        )
+        resolved.forEach {
+            val file = File(definitions,"./${it.path}/${it.identifier}.d.ts")
+            file.parentFile.mkdirs()
+            file.createNewFile()
+            file.writeText(it.toCode())
         }
+        definitions.listFiles()?.forEach { it.finalizeTopLevelExports() }
     }
 
-    private fun detectNameSpaceCodeBlocks(lines: List<String>): Map<String, DeclarationFile> {
-        val out = mutableMapOf<String, DeclarationFile>()
-        var index = 0
-        while (index < lines.size) {
-            val line = lines[index]
-            if (line.startsWith("export declare namespace ")) {
-                var name = line.split("export declare namespace ").last().replace(" {", "")
-                name = name.split(".").firstOrNull() ?: name
-                val code = out.getOrPut(name) { DeclarationFile() }
-                code.lines.add(line)
-                var opening = 1
-                while (true) {
-                    index++
-                    val l = lines[index]
-                    l.checkImports().forEach { code.imports.add(it.namespace) }
-                    if (l.contains("{") && l.contains("}")) {
-                        code.lines.add(l)
-                        index++
-                    } else if (l.contains("{")) {
-                        opening++
-                        code.lines.add(l)
-                    } else if (l.contains("}")) {
-                        opening--
-                        code.lines.add(l)
-                        if (opening == 0) break
-                    } else {
-                        code.lines.add(l)
-                    }
-                }
+    private fun File.finalizeTopLevelExports() {
+        val content = listFiles()?.filterNot {
+            it.name.contains("index.")
+        } ?: return
+        val index = File(this, "index.ts")
+        index.createNewFile()
+        index.writeText("/* generated index file */\n")
+        content.forEach {
+            val text = if (it.isDirectory) {
+                "export * from './${it.name}'"
+            } else {
+                val name = it.name.replace(".d.ts", "")
+                "export type { $name } from './$name'"
             }
-            index++
+            index.appendText("$text\n")
         }
-        return out
-    }
-
-
-    private data class ImportCheck(val namespace: String)
-
-    private fun String.checkImports(): Set<ImportCheck> {
-        if (!contains(".")) return emptySet()
-        if (contains("=")) return emptySet()
-
-        if (contains(": ")) { // type
-            return split(": ").flatMap { it.tokenImportCheck() }.toSet()
-        }
-
-        val extends = split("extends ").lastOrNull() ?: return emptySet()
-
-        return extends.split(" ,").flatMap { it.tokenImportCheck() }.toSet()
-    }
-
-    private fun String.tokenImportCheck(): Set<ImportCheck> {
-        if (!contains(".")) return emptySet()
-
-        // kase.Progress
-        if (!contains("<")) {
-            val namespace = split(".").first()
-            return setOf(ImportCheck(namespace))
-        }
-
-        val inner = substringAfterLast("<").substringBefore(">")
-        val innerTokens = inner.split(", ")
-        val outer = replace("<$inner>", "")
-        return (innerTokens.flatMap { it.tokenImportCheck() } + outer.tokenImportCheck()).toSet()
+        content.forEach { if (it.isDirectory) it.finalizeTopLevelExports() }
     }
 }

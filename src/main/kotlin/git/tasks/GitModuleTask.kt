@@ -40,6 +40,7 @@ abstract class GitModuleTask : DefaultTask() {
         val processes = modules.get().map { module ->
             val out = destination.file("${module.name}.out.txt").get().asFile
             val err = destination.file("${module.name}.err.txt").get().asFile
+            onStart(module)
             GitProcess(
                 workdir = module,
                 process = ProcessBuilder(cmd).apply {
@@ -49,7 +50,7 @@ abstract class GitModuleTask : DefaultTask() {
                 }.start(),
                 out = out,
                 err = err
-            ).also { onStart(it) }
+            )
         }
 
         postExecute(processes)
@@ -57,13 +58,13 @@ abstract class GitModuleTask : DefaultTask() {
         finish(processes)
     }
 
-    open fun onStart(process: GitProcess) {}
+    open fun onStart(workdir: File) {}
 
-    open fun onFinished(process: GitProcess){}
+    open fun onFinished(workdir: File){}
     open fun postExecute(processes: List<GitProcess>) {
         val fails = processes.filter {
             it.process.waitFor()
-            onFinished(it)
+            onFinished(it.workdir)
             it.process.exitValue() != 0
         }
 

@@ -35,10 +35,10 @@ fun TextFileBuilder.database(
     url: String,
     name: String
 ) {
-    blankline()
     -"""[database]"""
     -"""url = "$url""""
     -"""name = "$name""""
+    blankline()
 }
 
 fun TextFileBuilder.recovery(

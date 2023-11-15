@@ -7,4 +7,6 @@ class GitProcess(
     val process: Process,
     val out: File,
     val err: File,
-)
+) {
+
+}

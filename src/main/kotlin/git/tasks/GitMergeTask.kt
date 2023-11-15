@@ -1,6 +1,7 @@
 package git.tasks
 
 import git.models.GitProcess
+import java.io.File
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 
@@ -13,18 +14,18 @@ abstract class GitMergeTask : GitModuleTask() {
         git("merge", from.map { "origin/$it" })
     }
 
-    override fun onStart(process: GitProcess) {
+    override fun onStart(workdir: File) {
         val text = buildString {
-            appendLine("Workdir: ${process.workdir}")
+            appendLine("Workdir: $workdir")
             appendLine("Merging: ${from.get()}")
             appendLine("Status: 🔵 Started")
         }
         println(text)
     }
 
-    override fun onFinished(process: GitProcess) {
+    override fun onFinished(workdir: File) {
         val text = buildString {
-            appendLine("Workdir: ${process.workdir}")
+            appendLine("Workdir: $workdir")
             appendLine("Merging: ${from.get()}")
             appendLine("Status: 🟢 Finished")
         }

@@ -19,7 +19,7 @@ private fun <T : Isolate> PlainDockerService.map(
     mapImageToo: Boolean
 ) = PlainDockerService(
     name = name,
-    image = if (mapImageToo) image.substringBefore(":").mapped(env) + ":" + image.substringAfter(":") else image,
+    image = if (mapImageToo) image.substringBefore(":").mapped(env) + ":" + image.substringAfterLast(":") else image,
     restart = restart,
     privileged = privileged,
     exposes = exposes,

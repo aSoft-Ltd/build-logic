@@ -133,12 +133,14 @@ abstract class DockateExtension(internal val project: Project) {
                 val remote = "$linkWithPort/$local"
 
                 val tag = tasks.register<Exec>("dockerImageTag${trail}") {
+                    group = "Dockate Image Tag"
                     dependsOn(allowRegistry)
                     comp.deps[it.name]?.forEach { dep -> dependsOn(dep) }
                     commandLine("docker", "image", "tag", local, remote)
                 }
 
                 val push = tasks.register<Exec>("dockerImagePush${trail}") {
+                    group = "Dockate Image Push"
                     dependsOn(tag)
                     commandLine("docker", "image", "push", remote)
                 }
@@ -211,24 +213,28 @@ abstract class DockateExtension(internal val project: Project) {
             }
 
             val up = tasks.register<Exec>("dockerComposeUp$trail") {
+                group = "Docker Compose Up"
                 dependsOn(copyComposeFileForDockerCompose, volumes, pull)
                 val script = "cd $base && echo $pass | sudo -S docker compose up -d --renew-anon-volumes"
                 commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
             }
 
             val down = tasks.register<Exec>("dockerComposeDown$trail") {
+                group = "Docker Compose Down"
                 dependsOn(copyComposeFileForDockerCompose)
                 val script = "cd $base && echo $pass | sudo -S docker compose down"
                 commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
             }
 
             val deploy = tasks.register<Exec>("dockerStackDeploy$trail") {
+                group = "Docker Stack Deploy"
                 dependsOn(copyComposeFileForDockerStack, volumes, pull)
                 val script = "cd $base && echo $pass | sudo -S docker stack deploy -c docker-stack-compose.yml ${comp.environment.qualifier.dashed}"
                 commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
             }
 
             val remove = tasks.register<Exec>("dockerStackRemove$trail") {
+                group = "Docker Stack Remove"
                 val script = "echo $pass | sudo -S docker stack remove ${comp.environment.qualifier.dashed}"
                 commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
             }

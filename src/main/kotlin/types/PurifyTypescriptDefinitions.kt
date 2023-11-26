@@ -8,7 +8,6 @@ import types.tasks.RemoveCodeBlockTask
 import types.tasks.RemoveLinesTask
 import types.tasks.ReturnOptionalsTask
 import types.tasks.SplitTypescriptDefinitionsTask
-import types.tasks.SplitTypescriptDefinitionsTask2
 
 fun Project.purifyTypescriptDefinitions(configure: BeginPurificationTask.() -> Unit): TaskProvider<BeginPurificationTask> {
     val begin = tasks.register<BeginPurificationTask>("beginTypescriptDefinitionPurification") {
@@ -33,7 +32,7 @@ fun Project.purifyTypescriptDefinitions(configure: BeginPurificationTask.() -> U
 //        input.set(optionals.flatMap { it.output })
 //    }
 
-    tasks.register<SplitTypescriptDefinitionsTask2>("splitTypescriptDefinition") {
+    tasks.register<SplitTypescriptDefinitionsTask>("splitTypescriptDefinition") {
         dependsOn(optionals)
         input.set(optionals.flatMap { it.output })
     }

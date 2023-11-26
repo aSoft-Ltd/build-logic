@@ -48,7 +48,6 @@ abstract class GitModuleTask : DefaultTask() {
             val err = destination.file("${module.name}.err.txt").get().asFile
             onStart(module)
             val cmd = command.get().map { it.get() } + trailCommand
-            println("Command: ${cmd.joinToString(" ")}")
             GitProcess(
                 workdir = module,
                 process = ProcessBuilder(cmd).apply {

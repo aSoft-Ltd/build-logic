@@ -12,14 +12,22 @@ abstract class GitPushTask : GitModuleTask() {
     @get:Input
     abstract val dst: Property<String>
 
+    private val destinations by lazy { dst.get().split(",") }
+    private val source by lazy { src.get() }
+
+    private val mappings by lazy { destinations.map { "$source:$it" } }
+
     init {
-        git("push", "origin", src.flatMap { s -> dst.map { d -> "$s:$d" } })
+        git(*(arrayOf("push", "origin") + mappings))
+//        git("push", "origin", src.flatMap { s -> dst.map { d -> "$s:$d" } })
     }
 
     override fun onStart(process: GitProcess) {
         val text = buildString {
             appendLine("Workdir: ${process.workdir}")
-            appendLine("Pushing: ${src.get()} --> ${dst.get()}")
+            mappings.forEach {
+                appendLine("Pushing: ${it.replace(":", "--->")}")
+            }
             appendLine("Status: 🔵 Started")
         }
         println(text)
@@ -28,7 +36,9 @@ abstract class GitPushTask : GitModuleTask() {
     override fun onFinished(process: GitProcess) {
         val text = buildString {
             appendLine("Workdir: ${process.workdir}")
-            appendLine("Pushing: ${src.get()} --> ${dst.get()}")
+            mappings.forEach {
+                appendLine("Pushing: ${it.replace(":", "--->")}")
+            }
             appendLine("Status: 🟢 Finished")
         }
         println(text)

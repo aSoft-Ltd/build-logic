@@ -16,18 +16,20 @@ abstract class GitPushTask : GitModuleTask() {
     private val destinations by lazy { dst.get().split(",") }
     private val source by lazy { src.get() }
 
-    private val mappings by lazy { destinations.map { "$source:$it" } }
+    private val mappings by lazy {
+        destinations.map { "$source:$it" } + "$source:$source"
+    }
 
     init {
-        git(*(arrayOf("push", "origin") + mappings))
-//        git("push", "origin", src.flatMap { s -> dst.map { d -> "$s:$d" } })
+        git("push", "origin")
     }
 
     override fun onStart(workdir: File) {
+        trailCommand += mappings
         val text = buildString {
             appendLine("Workdir: $workdir")
             mappings.forEach {
-                appendLine("Pushing: ${it.replace(":", "--->")}")
+                appendLine("Pushing: ${it.replace(":", " --> ")}")
             }
             appendLine("Status: 🔵 Started")
         }
@@ -38,7 +40,7 @@ abstract class GitPushTask : GitModuleTask() {
         val text = buildString {
             appendLine("Workdir: $workdir")
             mappings.forEach {
-                appendLine("Pushing: ${it.replace(":", "--->")}")
+                appendLine("Pushing: ${it.replace(":", " --> ")}")
             }
             appendLine("Status: 🟢 Finished")
         }

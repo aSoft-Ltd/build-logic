@@ -5,7 +5,6 @@ import java.io.File
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.ListProperty
-import org.gradle.api.provider.Property
 import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
@@ -23,24 +22,33 @@ abstract class GitModuleTask : DefaultTask() {
     @get:Input
     abstract val command: ListProperty<Provider<String>>
 
+    private val gitProvider: Provider<String> = project.provider { "git" }
+
     fun git(vararg args: Any) {
-        command.add(project.provider { "git" })
-        args.map {
-            when (it) {
-                is String -> command.add(project.provider { it })
-                is Provider<*> -> command.add(it as Provider<String>)
-                else -> throw IllegalArgumentException("Unsupported git sub command $it")
+        command.add(gitProvider)
+        addCommand(*args)
+    }
+
+    @get:Input
+    protected val trailCommand = mutableSetOf<String>()
+    protected fun addCommand(vararg args: Any) {
+        args.map { arg ->
+            when (arg) {
+                is String -> command.add(gitProvider.map { arg })
+                is Provider<*> -> command.add(arg as Provider<String>)
+                else -> throw IllegalArgumentException("Unsupported git sub command $arg")
             }
         }
     }
 
     @TaskAction
     fun execute() {
-        val cmd = command.get().map { it.get() }
         val processes = modules.get().map { module ->
             val out = destination.file("${module.name}.out.txt").get().asFile
             val err = destination.file("${module.name}.err.txt").get().asFile
             onStart(module)
+            val cmd = command.get().map { it.get() } + trailCommand
+            println("Command: ${cmd.joinToString(" ")}")
             GitProcess(
                 workdir = module,
                 process = ProcessBuilder(cmd).apply {
@@ -60,7 +68,7 @@ abstract class GitModuleTask : DefaultTask() {
 
     open fun onStart(workdir: File) {}
 
-    open fun onFinished(workdir: File){}
+    open fun onFinished(workdir: File) {}
     open fun postExecute(processes: List<GitProcess>) {
         val fails = processes.filter {
             it.process.waitFor()

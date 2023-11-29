@@ -78,12 +78,12 @@ class DockerComposeFileBuilder : PlainDockerComposeFileBuilder() {
                 create = tasks.register<Exec>("dockerVolumeCreate$trail") {
                     group = "Dockate Create Volume"
                     workingDir(env.workdir)
-                    commandLine("docker", "volume", "create", it.name)
+                    commandLine("docker", "volume", "create", env.qualifier.dashed + "_" + it.name)
                 },
                 remove = tasks.register<Exec>("dockerVolumeRemove$trail") {
                     group = "Dockate Remove Volume"
                     workingDir(env.workdir)
-                    commandLine("docker", "volume", "remove", it.name)
+                    commandLine("docker", "volume", "remove", env.qualifier.dashed + "_" + it.name)
                 }
             )
         }
@@ -94,13 +94,9 @@ class DockerComposeFileBuilder : PlainDockerComposeFileBuilder() {
                 group = "Dockate Create Volumes"
                 dependsOn(volumes.map { it.create })
             },
-            remove = tasks.register<Exec>("dockerVolumesRemove${env.taskNameTrail}") {
+            remove = tasks.register("dockerVolumesRemove${env.taskNameTrail}") {
                 group = "Dockate Remove Volumes"
                 dependsOn(volumes.map { it.remove })
-                val script = listOf("docker","volume","remove") + volumes.map {
-                    env.qualifier.dashed+"_"+it.name
-                }
-                commandLine(*script.toTypedArray())
             }
         )
 

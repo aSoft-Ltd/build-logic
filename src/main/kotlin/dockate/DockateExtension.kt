@@ -204,17 +204,25 @@ abstract class DockateExtension(internal val project: Project) {
                 commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
             }
 
-            val volumes = tasks.register<Exec>("dockerVolumesCreate$trail") {
+            val volumesCreate = tasks.register<Exec>("dockerVolumesCreate$trail") {
                 group = "Dockate Create Volume"
                 val script = "echo $pass | sudo -S docker system prune --volumes -f && " + comp.volumes.joinToString(" && ") {
-                    "sudo docker volume create ${it.name}"
+                    "sudo docker volume create ${comp.environment.qualifier.dashed}_${it.name}"
+                }
+                commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
+            }
+
+            val volumesRemove = tasks.register<Exec>("dockerVolumesRemove$trail") {
+                group = "Dockate Volume Remove"
+                val script = "echo $pass | sudo -S docker system prune --volumes -f && " + comp.volumes.joinToString(" && ") {
+                    "sudo docker volume remove ${comp.environment.qualifier.dashed}_${it.name}"
                 }
                 commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
             }
 
             val up = tasks.register<Exec>("dockerComposeUp$trail") {
                 group = "Docker Compose Up"
-                dependsOn(copyComposeFileForDockerCompose, volumes, pull)
+                dependsOn(copyComposeFileForDockerCompose, volumesCreate, pull)
                 val script = "cd $base && echo $pass | sudo -S docker compose up -d --renew-anon-volumes"
                 commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
             }
@@ -228,7 +236,7 @@ abstract class DockateExtension(internal val project: Project) {
 
             val deploy = tasks.register<Exec>("dockerStackDeploy$trail") {
                 group = "Docker Stack Deploy"
-                dependsOn(copyComposeFileForDockerStack, volumes, pull)
+                dependsOn(copyComposeFileForDockerStack, volumesCreate, pull)
                 val script = "cd $base && echo $pass | sudo -S docker stack deploy -c docker-stack-compose.yml ${comp.environment.qualifier.dashed}"
                 commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
             }

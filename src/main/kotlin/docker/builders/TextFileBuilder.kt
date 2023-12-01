@@ -5,6 +5,7 @@ import docker.models.TextFile
 import docker.tasks.CreateTextFileTask
 import org.gradle.api.Project
 import org.gradle.api.file.Directory
+import org.gradle.api.file.DuplicatesStrategy
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.Copy
@@ -55,6 +56,7 @@ open class TextFileBuilder(
             group = "Dockate Copy Text File"
             if (dependsOn != null) dependsOn(dependsOn)
             from(directories)
+            duplicatesStrategy = DuplicatesStrategy.INCLUDE
             into(workdir)
         }
 

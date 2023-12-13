@@ -109,6 +109,14 @@ abstract class DockateExtension(internal val project: Project) {
         return files
     }
 
+    class RegistryDeployment(
+        val file: ScopedDockerComposeFile<*>,
+        val up: TaskProvider<out Task>,
+        val down: TaskProvider<out Task>,
+        val deploy: TaskProvider<out Task>,
+        val remove: TaskProvider<out Task>,
+    )
+
     fun Project.registry(
         compose: List<ScopedDockerComposeFile<*>>,
         name: String,
@@ -123,6 +131,8 @@ abstract class DockateExtension(internal val project: Project) {
         val allowRegistry = tasks.register<AllowRegistryTask>("allowRegistryFor${name.capitalized()}") {
             registry.set(linkWithPort)
         }
+
+        val deps = mutableListOf<RegistryDeployment>()
 
         for (comp in compose) {
             val services = comp.services.filter { it.image.contains(comp.environment.name) }
@@ -245,6 +255,32 @@ abstract class DockateExtension(internal val project: Project) {
                 group = "Docker Stack Remove"
                 val script = "echo $pass | sudo -S docker stack remove ${comp.environment.qualifier.dashed}"
                 commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
+            }
+
+            val dep = RegistryDeployment(comp, up, down, deploy, remove)
+            deps.add(dep)
+        }
+
+        for ((env, deployments) in deps.groupBy { it.file.environment.name }) {
+            val trail = "$name-${env}".taskify()
+            tasks.register("dockerComposeUp$trail") {
+                group = "Docker Compose Up"
+                dependsOn(deployments.map { it.up })
+            }
+
+            tasks.register("dockerComposeDown$trail") {
+                group = "Docker Compose Up"
+                dependsOn(deployments.map { it.down })
+            }
+
+            tasks.register("dockerStackDeploy$trail") {
+                group = "Docker Stack Deploy"
+                dependsOn(deployments.map { it.deploy })
+            }
+
+            tasks.register("dockerStackRemove$trail") {
+                group = "Docker Stack Remove"
+                dependsOn(deployments.map { it.remove })
             }
         }
     }

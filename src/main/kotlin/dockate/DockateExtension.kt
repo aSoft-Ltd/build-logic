@@ -84,6 +84,7 @@ abstract class DockateExtension(internal val project: Project) {
     }
 
     val OPEN_JDK_22_JDK_SLIM = "openjdk:22-jdk-slim"
+    val NODE_18_19_0_ALPINE_3_18 = "node:18.19.0-alpine3.18"
 
     fun <T : Isolate> Project.compose(
         environments: List<DeploymentEnvironment<T>>,

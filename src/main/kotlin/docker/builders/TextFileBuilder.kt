@@ -43,14 +43,14 @@ open class TextFileBuilder(
         content.add(this)
     }
 
-    fun Project.build(env: ScopedDeploymentEnvironment<*>, dependsOn: TaskProvider<*>? = null): TextFile {
+    fun Project.build(env: ScopedDeploymentEnvironment<*>, image: String, dependsOn: TaskProvider<*>? = null): TextFile {
         val filePath = this@TextFileBuilder.path
         val workdir = env.workdir
         val dst = workdir.map { it.file(filePath) }
-        val taskName = "${env.namespace}${filePath.capitalized()}".taskify()
+        val taskName = "${env.namespace}${image.capitalized()}${filePath.capitalized()}".taskify()
 
         val other = files.map {
-            with(it) { build(env, dependsOn) }
+            with(it) { build(env, image, dependsOn) }
         }
         val copy = tasks.register<Copy>("copyTextFile${taskName}Dependencies") {
             group = "Dockate Copy Text File"

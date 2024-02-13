@@ -35,23 +35,23 @@ abstract class DockateExtension(internal val project: Project) {
     ): LocalImageRef {
         val images = mutableListOf<LocalImage<T>>()
         environments.map {
-            it.toScoped(output.dir("${it.path}/images"))
+            it.toScoped(output.dir("${it.path}/images/$name"))
         }.forEach { environment ->
             val imageTag = "${environment.isolate.name}-${name}-${environment.name}".hyphenize()
             val versionedImageTag = "$imageTag:$version"
             val taskName = "${name}-${environment.isolate.name}-${environment.name}".taskify()
             DockerfileBuilder(objects.listProperty(), objects.listProperty()).apply {
                 builder(environment)
-                val dockerFile = build(environment, dependsOn)
+                val dockerFile = build(environment, name, dependsOn)
                 val build = tasks.register<Exec>("dockerImageBuild${taskName}") {
-                    group = "Dockate Build Image"
+                    group = "Docker Image Build"
                     commandLine("docker", "build", "-t", versionedImageTag, ".")
                     workingDir(environment.workdir)
                     if (dependsOn != null) dependsOn(dependsOn)
                     dependsOn(dockerFile.create)
                 }
                 val remove = tasks.register<Exec>("dockerImageRemove${taskName}") {
-                    group = "Dockate Remove Image"
+                    group = "Docker Image Remove"
                     commandLine("docker", "image", "remove", versionedImageTag)
                 }
                 val image = LocalImage(
@@ -66,24 +66,26 @@ abstract class DockateExtension(internal val project: Project) {
             }
         }
 
-        val create = tasks.register("createDockerfiles") {
+        val trail = name.capitalized().taskify()
+        val create = tasks.register("createDockerfiles$trail") {
             group = "Dockate Create Dockerfiles"
             dependsOn(images.map { it.dockerFile.create })
         }
 
-        val build = tasks.register("dockerImagesBuild") {
-            group = "Docker Build Images"
+        val build = tasks.register("dockerImagesBuild$trail") {
+            group = "Docker Image Build"
             dependsOn(images.map { it.build })
         }
 
-        val remove = tasks.register("dockerImagesRemove") {
-            group = "Dockate Remove Images"
+        val remove = tasks.register("dockerImagesRemove$trail") {
+            group = "Docker Image Remove"
             dependsOn(images.map { it.remove })
         }
         return LocalImageRef(name, version, create, build, remove)
     }
 
     val OPEN_JDK_22_JDK_SLIM = "openjdk:22-jdk-slim"
+    val NODE_18_19_0_ALPINE_3_18 = "node:18.19.0-alpine3.18"
 
     fun <T : Isolate> Project.compose(
         environments: List<DeploymentEnvironment<T>>,

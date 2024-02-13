@@ -20,7 +20,7 @@ open class DockerfileBuilder(
     }
 
     fun Project.copy(path: String, builder: TextFileBuilder.() -> Unit) {
-        copy(from = path, into = "/app/$path")
+        copy(src = path, dst = "/app/$path")
         val tf = TextFileBuilder(path, objects.listProperty(), objects.listProperty())
         tf.builder()
         files.add(tf)

@@ -26,6 +26,32 @@ import utils.taskify
 abstract class DockateExtension(internal val project: Project) {
     abstract val output: DirectoryProperty
 
+    fun Project.image(
+        name: String,
+        version: String = this.version.toString(),
+        dependsOn: TaskProvider<Task>? = null,
+        builder: DockerfileBuilder.() -> Unit
+    ): String {
+        val dfb = DockerfileBuilder(objects.listProperty(), objects.listProperty())
+        dfb.apply(builder)
+        val tf = with(dfb) {
+            build(output, name, dependsOn)
+        }
+
+        val build = tasks.register<Exec>("dockerImageBuild${name.capitalized()}") {
+            group = "Docker Image Build"
+            commandLine("docker", "build", "-t", "$name:$version", ".")
+            workingDir(output)
+            if (dependsOn != null) dependsOn(dependsOn)
+            dependsOn(tf.create)
+        }
+        val remove = tasks.register<Exec>("dockerImageRemove${name.capitalized()}") {
+            group = "Docker Image Remove"
+            commandLine("docker", "image", "remove", "$name:$version")
+        }
+        return "$name:$version"
+    }
+
     fun <T : Isolate> Project.image(
         environments: List<DeploymentEnvironment<T>>,
         name: String = this.name,

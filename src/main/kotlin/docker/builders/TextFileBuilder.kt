@@ -5,6 +5,7 @@ import docker.models.TextFile
 import docker.tasks.CreateTextFileTask
 import org.gradle.api.Project
 import org.gradle.api.file.Directory
+import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.DuplicatesStrategy
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Provider
@@ -41,6 +42,40 @@ open class TextFileBuilder(
 
     operator fun Provider<String>.unaryPlus() {
         content.add(this)
+    }
+
+    fun Project.build(
+        workdir: DirectoryProperty,
+        image: String,
+        dependsOn: TaskProvider<*>? = null
+    ): TextFile {
+        val filePath = this@TextFileBuilder.path
+        val dst = workdir.map { it.file(filePath) }
+        val taskName = "${image.capitalized()}${filePath.capitalized()}".taskify()
+
+        val copy = tasks.register<Copy>("copyTextFile${taskName}Dependencies") {
+            group = "Dockate Copy Text File"
+            if (dependsOn != null) dependsOn(dependsOn)
+            from(directories)
+            duplicatesStrategy = DuplicatesStrategy.INCLUDE
+            into(workdir)
+        }
+
+        return TextFile(
+            path = filePath,
+            create = tasks.register<CreateTextFileTask>("createTextFile$taskName") {
+                group = "Dockate Create Text File"
+                dependsOn(this@TextFileBuilder.dependencies)
+                dependsOn(copy)
+                if (dependsOn != null) dependsOn(dependsOn)
+                output.set(dst)
+                content.set(this@TextFileBuilder.content)
+            },
+            remove = tasks.register<Delete>("removeTextFile$taskName") {
+                group = "Dockate Remove Text File"
+                file(dst)
+            }
+        )
     }
 
     fun Project.build(env: ScopedDeploymentEnvironment<*>, image: String, dependsOn: TaskProvider<*>? = null): TextFile {

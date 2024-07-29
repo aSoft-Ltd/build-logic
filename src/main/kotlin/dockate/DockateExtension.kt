@@ -40,7 +40,7 @@ abstract class DockateExtension(internal val project: Project) {
 
         val build = tasks.register<Exec>("dockerImageBuild${name.capitalized()}") {
             group = "Docker Image Build"
-            commandLine("docker", "build", "--platform" , "linux/arm64", "-t", "$name:$version", ".")
+            commandLine("docker", "build", "-t", "$name:$version", ".")
             workingDir(output)
             if (dependsOn != null) dependsOn(dependsOn)
             dependsOn(tf.create)

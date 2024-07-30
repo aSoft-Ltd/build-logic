@@ -11,7 +11,7 @@ fun <T : Isolate> PlainDockerComposeFile.map(env: ScopedDeploymentEnvironment<T>
     version = version,
     name = name,
     services = services.map { it.map(env, deps.containsKey(it.name)) },
-    volumes = volumes.map { it.map(env) }
+    volumes = volumes // .map { it.map(env) }
 )
 
 private fun <T : Isolate> PlainDockerService.map(
@@ -26,11 +26,7 @@ private fun <T : Isolate> PlainDockerService.map(
     ports = ports,
     environments = environments,
     dependencies = dependencies,
-    volumes = volumes.map { mapping ->
-        mapping.mapOutside {
-            it.mapped(env)
-        }
-    }
+    volumes = volumes //.map { mapping -> mapping.mapOutside { it.mapped(env) } }
 )
 
 private fun <T : Isolate> PlainDockerVolume.map(env: ScopedDeploymentEnvironment<T>) = PlainDockerVolume(

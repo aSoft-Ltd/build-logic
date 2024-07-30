@@ -15,7 +15,9 @@ import org.gradle.api.Task
 import org.gradle.api.tasks.Exec
 import org.gradle.api.tasks.TaskCollection
 import org.gradle.api.tasks.TaskProvider
+import org.gradle.configurationcache.extensions.capitalized
 import org.gradle.kotlin.dsl.register
+import utils.hyphenize
 import utils.taskify
 
 class DockerComposeFileBuilder : PlainDockerComposeFileBuilder() {
@@ -68,45 +70,47 @@ class DockerComposeFileBuilder : PlainDockerComposeFileBuilder() {
         configure()
     }
 
-    fun <T : Isolate> Project.build(env: ScopedDeploymentEnvironment<T>): ScopedDockerComposeFile<T> {
+    fun <T : Isolate> Project.build(stack: String,env: ScopedDeploymentEnvironment<T>): ScopedDockerComposeFile<T> {
         val dcf = build().map(env, deps)
 
         val volumes = dcf.volumes.map {
-            val trail = it.name.taskify() + env.taskNameTrail
+            val trail = (stack + env.taskNameTrail + it.name.capitalized()).taskify()
+            val prefix = "${env.isolate.name.hyphenize()}-${stack.hyphenize()}-${env.name}"
             ScopedDockerVolume(
                 name = it.name,
                 create = tasks.register<Exec>("dockerVolumeCreate$trail") {
                     group = "Dockate Create Volume"
                     workingDir(env.workdir)
-                    commandLine("docker", "volume", "create", env.qualifier.dashed + "_" + it.name)
+                    commandLine("docker", "volume", "create", prefix + "_" + it.name)
                 },
                 remove = tasks.register<Exec>("dockerVolumeRemove$trail") {
                     group = "Dockate Remove Volume"
                     workingDir(env.workdir)
-                    commandLine("docker", "volume", "remove", env.qualifier.dashed + "_" + it.name)
+                    commandLine("docker", "volume", "remove", prefix + "_" + it.name)
                 }
             )
         }
 
+        val trail = (stack + env.taskNameTrail).taskify()
         val scopedVolumes = ScopedDockerVolumes(
             volumes = volumes,
-            create = tasks.register("dockerVolumesCreate${env.taskNameTrail}") {
+            create = tasks.register("dockerVolumesCreate${trail}") {
                 group = "Dockate Create Volumes"
                 dependsOn(volumes.map { it.create })
             },
-            remove = tasks.register("dockerVolumesRemove${env.taskNameTrail}") {
+            remove = tasks.register("dockerVolumesRemove${trail}") {
                 group = "Dockate Remove Volumes"
                 dependsOn(volumes.map { it.remove })
             }
         )
 
-        val create = tasks.register<CreateDockerComposeFileTask>("createDockerComposeFile${env.taskNameTrail}") {
+        val create = tasks.register<CreateDockerComposeFileTask>("createDockerComposeFile${stack.capitalized()}${env.taskNameTrail}") {
             group = "Dockate Create Compose File"
             directory.set(env.workdir)
             content.set(dcf.toRawText("  "))
         }
 
-        val up = tasks.register<Exec>("dockerComposeUp${env.taskNameTrail}") {
+        val up = tasks.register<Exec>("dockerComposeUp${stack.capitalized()}${env.taskNameTrail}") {
             group = "Dockate Compose Up"
             workingDir(env.workdir)
             dependsOn(create, scopedVolumes.create)
@@ -114,7 +118,7 @@ class DockerComposeFileBuilder : PlainDockerComposeFileBuilder() {
             commandLine("docker", "compose", "up", "-d", "--renew-anon-volumes")
         }
 
-        val down = tasks.register<Exec>("dockerComposeDown${env.taskNameTrail}") {
+        val down = tasks.register<Exec>("dockerComposeDown${stack.capitalized()}${env.taskNameTrail}") {
             group = "Dockate Compose Down"
             workingDir(env.workdir)
             commandLine("docker", "compose", "down")

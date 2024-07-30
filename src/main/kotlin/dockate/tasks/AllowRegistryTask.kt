@@ -13,6 +13,8 @@ abstract class AllowRegistryTask : DefaultTask() {
 
     @TaskAction
     fun allow() {
+        val url = registry.get()
+        if (url.startsWith("https")) return // No need to allow insecure-registries for secure registries
         val file = File("/etc/docker/daemon.json")
         if (!file.exists()) {
             file.createNewFile()

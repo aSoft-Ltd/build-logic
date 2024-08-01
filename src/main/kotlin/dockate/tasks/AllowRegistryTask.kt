@@ -13,16 +13,16 @@ abstract class AllowRegistryTask : DefaultTask() {
 
     @TaskAction
     fun allow() {
-        val file = File("/etc/docker/daemon.json")
-        if (!file.exists()) {
-            file.createNewFile()
-        }
-        file.writeText(
-            """
-            {
-                "insecure-registries" : [ "${registry.get()}" ]
-            }
-            """.trimIndent()
-        )
+//        val file = File("/etc/docker/daemon.json")
+//        if (!file.exists()) {
+//            file.createNewFile()
+//        }
+//        file.writeText(
+//            """
+//            {
+//                "insecure-registries" : [ "${registry.get()}" ]
+//            }
+//            """.trimIndent()
+//        )
     }
 }

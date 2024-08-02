@@ -19,10 +19,11 @@ abstract class AllowRegistryTask : DefaultTask() {
         if (!file.exists()) {
             file.createNewFile()
         }
+        val content = url.split("//").lastOrNull() ?: url
         file.writeText(
             """
             {
-                "insecure-registries" : [ "${registry.get()}" ]
+                "insecure-registries" : [ "$content" ]
             }
             """.trimIndent()
         )

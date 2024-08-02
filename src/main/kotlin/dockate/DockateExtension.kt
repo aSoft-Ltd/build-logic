@@ -153,7 +153,7 @@ abstract class DockateExtension(internal val project: Project) {
         val linkWithoutPort = linkWithPort.split(":").firstOrNull() ?: linkWithPort
 
         val allowRegistry = tasks.register<AllowRegistryTask>("allowRegistryFor${name.capitalized()}") {
-            registry.set(linkWithPort)
+            registry.set(url)
         }
 
         val deps = mutableListOf<RegistryDeployment>()

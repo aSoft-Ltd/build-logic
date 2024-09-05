@@ -69,6 +69,86 @@ fun TextFileBuilder.verification(
     template = template
 )
 
+fun TextFileBuilder.emails() = contextOnly("emails")
+
+fun TextFileBuilder.applicationSubmitted(
+    name: String,
+    address: String,
+    subject: String,
+    template: String,
+) = templatedEmailNoContext(
+    scope = "application.submitted.email",
+    name = name,
+    address = address,
+    subject = subject,
+    template = template
+)
+
+fun TextFileBuilder.applicationInReview(
+    name: String,
+    address: String,
+    subject: String,
+    template: String,
+) = templatedEmailNoContext(
+    scope = "application.inReview.email",
+    name = name,
+    address = address,
+    subject = subject,
+    template = template
+)
+
+fun TextFileBuilder.applicationRequiresAction(
+    name: String,
+    address: String,
+    subject: String,
+    template: String,
+) = templatedEmailNoContext(
+    scope = "application.requiresAction.email",
+    name = name,
+    address = address,
+    subject = subject,
+    template = template
+)
+
+fun TextFileBuilder.applicationAccepted(
+    name: String,
+    address: String,
+    subject: String,
+    template: String,
+) = templatedEmailNoContext(
+    scope = "application.accepted.email",
+    name = name,
+    address = address,
+    subject = subject,
+    template = template
+)
+
+fun TextFileBuilder.applicationRejected(
+    name: String,
+    address: String,
+    subject: String,
+    template: String,
+) = templatedEmailNoContext(
+    scope = "application.rejected.email",
+    name = name,
+    address = address,
+    subject = subject,
+    template = template
+)
+
+fun TextFileBuilder.queryMessage(
+    name: String,
+    address: String,
+    subject: String,
+    template: String,
+) = templatedEmailNoContext(
+    scope = "query.email",
+    name = name,
+    address = address,
+    subject = subject,
+    template = template
+)
+
 private fun TextFileBuilder.templatedEmail(
     context: String,
     scope: String,
@@ -79,6 +159,27 @@ private fun TextFileBuilder.templatedEmail(
 ) {
     blankline()
     -"""[$context]"""
+    -"""$scope.name = "$name""""
+    -"""$scope.address = "$address""""
+    -"""$scope.subject = "$subject""""
+    -"""$scope.template = "$template""""
+}
+
+private fun TextFileBuilder.contextOnly(
+    context: String,
+) {
+    blankline()
+    -"""[$context]"""
+}
+
+private fun TextFileBuilder.templatedEmailNoContext(
+    scope: String,
+    name: String,
+    address: String,
+    subject: String,
+    template: String,
+) {
+    blankline()
     -"""$scope.name = "$name""""
     -"""$scope.address = "$address""""
     -"""$scope.subject = "$subject""""

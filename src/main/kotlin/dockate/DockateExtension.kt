@@ -65,7 +65,16 @@ abstract class DockateExtension(internal val project: Project) {
                 val dockerFile = build(environment, name, dependsOn)
                 val build = tasks.register<Exec>("dockerImageBuild${taskName}") {
                     group = "Docker Image Build"
-                    commandLine("docker", "build", "-t", versionedImageTag, ".")
+//                    val script = listOf(
+//                        "docker", "buildx", "build",
+//                        "--platform", "linux/amd64,linux/arm64",
+//                        "-t", versionedImageTag, "."
+//                    )
+                    val script = listOf(
+                        "docker", "build",
+                        "-t", versionedImageTag, "."
+                    )
+                    commandLine(*script.toTypedArray())
                     workingDir(environment.workdir)
                     if (dependsOn != null) dependsOn(dependsOn)
                     dependsOn(dockerFile.create)

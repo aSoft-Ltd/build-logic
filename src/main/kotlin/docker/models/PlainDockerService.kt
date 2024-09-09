@@ -1,7 +1,5 @@
 package docker.models
 
-import docker.models.Mapping
-
 data class PlainDockerService(
     val name: String,
     val image: String,

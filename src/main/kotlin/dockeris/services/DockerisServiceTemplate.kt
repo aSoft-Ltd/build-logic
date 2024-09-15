@@ -9,6 +9,7 @@ class DockerisServiceTemplate(
     val restart: String?,
     val environments: Map<String, String>,
     val ports: List<Pair<Int, Int>>,
+    val dependencies: Set<String>,
     val volumes: List<Pair<String, String>>
 ) {
     fun toDockerComposeFile(context: DockerisContext, tab: String, depth: Int) = buildString {
@@ -18,6 +19,7 @@ class DockerisServiceTemplate(
         appendLine("${padding2}image: ${image.toQualifiedName(context)}")
         if (restart != null) appendLine("${padding2}restart: $restart")
         appendPortsVariablesAndVolumes(tab, depth)
+        appendDependencies(tab, depth)
     }
 
     fun toDockerStackComposeFile(context: DockerisContext, domain: String, tab: String, depth: Int) = buildString {
@@ -27,6 +29,7 @@ class DockerisServiceTemplate(
         val label = (if (image is Image.Unpublished) "$domain/" else "") + image.toQualifiedName(context)
         appendLine("${padding2}image: $label")
         appendPortsVariablesAndVolumes(tab, depth)
+        appendDependencies(tab, depth)
     }
 
     private fun StringBuilder.appendPortsVariablesAndVolumes(tab: String, depth: Int) {
@@ -49,6 +52,16 @@ class DockerisServiceTemplate(
             volumes.forEach { (outside, inside) ->
                 appendLine("${padding3}- $outside:$inside")
             }
+        }
+    }
+
+
+    private fun StringBuilder.appendDependencies(tab: String, depth: Int) {
+        if (dependencies.isEmpty()) return
+        val padding = tab.repeat(depth + 1)
+        appendLine("${padding}depends_on:")
+        dependencies.forEach { service ->
+            appendLine("${padding}- $service")
         }
     }
 }

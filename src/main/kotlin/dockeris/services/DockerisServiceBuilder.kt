@@ -27,6 +27,11 @@ class DockerisServiceBuilder {
         ports.add(outside to inside)
     }
 
+    private val dependencies = mutableSetOf<String>()
+    fun dependsOn(vararg services: String) {
+        dependencies.addAll(services)
+    }
+
     private val volumes = mutableListOf<Pair<String, String>>()
     fun volumes(vararg mappings: Pair<String, String>) {
         volumes.addAll(mappings)
@@ -55,6 +60,7 @@ class DockerisServiceBuilder {
         restart = restart,
         ports = ports,
         environments = environments,
+        dependencies =  dependencies,
         volumes = volumes
     )
 }

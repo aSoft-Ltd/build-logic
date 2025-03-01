@@ -70,7 +70,7 @@ object RegistryStackTaskFactory {
                     val script = listOf(
                         "mkdir $base/root -p",
                         "mkdir $base/data -p"
-                    ).joinToString(" && ")
+                    ).joinToString(separator = " && ") { "sudo $it" }
                     commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
                 }
             }

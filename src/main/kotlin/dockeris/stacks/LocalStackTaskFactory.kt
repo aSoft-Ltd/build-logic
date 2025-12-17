@@ -37,7 +37,7 @@ object LocalStackTaskFactory {
                 workingDir(dir)
                 dependsOn(create)
                 images.forEach { image ->
-                    val task = "dockerisImageBuild${image.name.capitalized()}ImageFor${owner.capitalized()}${environment.capitalized()}EnvironmentToLocalRegistry".taskify()
+                    val task = "dockerisImageBuild${image.name.capitalized()}".taskify()
                     dependsOn(project.tasks.named(task))
                 }
             }

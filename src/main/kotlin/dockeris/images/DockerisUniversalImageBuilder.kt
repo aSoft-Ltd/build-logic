@@ -1,11 +1,10 @@
 package dockeris.images
 
-import dockeris.tooling.TextFileBuilder
 import dockeris.tooling.UniversalTextFileBuilder
 import org.gradle.api.file.Directory
 import org.gradle.api.provider.Provider
 
-class DockerisImageTemplateBuilder : TextFileBuilder() {
+class DockerisUniversalImageBuilder : UniversalTextFileBuilder() {
 
     val OPEN_JDK_22_JDK_SLIM = "openjdk:22-jdk-slim"
     val NODE_18_19_0_ALPINE_3_18 = "node:18.19.0-alpine3.18"
@@ -38,15 +37,15 @@ class DockerisImageTemplateBuilder : TextFileBuilder() {
     class DependencyFile(
         val name: String,
         val destination: String,
-        val builder: TextFileBuilder
+        val builder: UniversalTextFileBuilder
     )
 
     internal val dependencies = mutableListOf<DependencyFile>()
 
-    fun COPY(destination: String, configuration: TextFileBuilder.() -> Unit) {
+    fun COPY(destination: String, configuration: UniversalTextFileBuilder.() -> Unit) {
         val source = if (destination.startsWith("/")) destination.replaceFirst("/", "") else destination
         val file = destination.replace("/", "_")
-        dependencies.add(DependencyFile(file, source, TextFileBuilder().apply(configuration)))
+        dependencies.add(DependencyFile(file, source, UniversalTextFileBuilder().apply(configuration)))
         COPY(source, destination)
     }
 

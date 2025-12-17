@@ -4,6 +4,7 @@ import dockeris.DockerisContext
 
 open class TextFileBuilder {
     internal val lines = mutableListOf<(DockerisContext) -> String>()
+
     operator fun String.unaryPlus() {
         lines.add { this }
     }

@@ -1,7 +1,9 @@
 package dockeris.services
 
 import dockeris.DockerisExtension
+import dockeris.images.DockerisUniversalImageTemplate
 import dockeris.images.Image
+import dockeris.volumes.DockerisVolume
 
 class DockerisServiceBuilder {
     private var name: String? = null
@@ -16,6 +18,14 @@ class DockerisServiceBuilder {
         imageVersion = version
     }
 
+    fun image(image: Image) {
+        imageName = image.name
+        imageVersion = image.version
+    }
+
+    fun image(img: DockerisUniversalImageTemplate) {
+        image(img.name, img.version)
+    }
 
     private var restart: String? = null
     fun restart(value: String) {
@@ -37,6 +47,10 @@ class DockerisServiceBuilder {
         volumes.addAll(mappings)
     }
 
+    fun volume(v: DockerisVolume, path: String) {
+        volumes.add(v.name to path)
+    }
+
     private val environments = mutableMapOf<String, String>()
     fun environment(vararg variables: Pair<String, String>) {
         environments.putAll(variables)
@@ -50,17 +64,19 @@ class DockerisServiceBuilder {
         name = name ?: throw IllegalArgumentException("Service name is required"),
         image = run {
             val name = imageName ?: throw IllegalArgumentException("Image name is required")
-            val found = extension.images.find { it.name == name }
-            if (found == null || imageVersion != null) {
-                Image.Published(name, imageVersion ?: "latest")
-            } else {
-                Image.Unpublished(name, found.version, found.platforms)
+            val universal = extension.imgs.find { it.name == name }
+            val contextual = extension.images.find { it.name == name }
+            when {
+                contextual != null && universal != null -> Image.Unpublished(name, universal.version, universal.platforms)
+                contextual != null && universal == null -> Image.Unpublished(name, contextual.version, contextual.platforms)
+                contextual == null && universal != null -> Image.Unpublished(name, universal.version, universal.platforms)
+                else -> Image.Published(name, imageVersion ?: "latest")
             }
         },
         restart = restart,
         ports = ports,
         environments = environments,
-        dependencies =  dependencies,
+        dependencies = dependencies,
         volumes = volumes
     )
 }

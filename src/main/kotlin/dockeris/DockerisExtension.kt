@@ -2,8 +2,9 @@ package dockeris
 
 import dockeris.images.DockerisImageTemplate
 import dockeris.images.DockerisImageTemplateBuilder
+import dockeris.images.DockerisUniversalImageBuilder
+import dockeris.images.DockerisUniversalImageTemplate
 import dockeris.images.ImageTaskFactory
-import dockeris.services.DockerisServiceTemplate
 import dockeris.stacks.DockerisStackBuilder
 import dockeris.stacks.DockerisStackTemplate
 import dockeris.stacks.LocalStackTaskFactory
@@ -34,7 +35,11 @@ abstract class DockerisExtension(private val project: Project) {
         owners.addAll(names)
     }
 
+    @Deprecated("in favour of imgs")
     internal val images = mutableListOf<DockerisImageTemplate>()
+
+    // TODO: Rename to images
+    internal val imgs = mutableListOf<DockerisUniversalImageTemplate>()
 
     private val contexts = mutableMapOf<String, DockerisContext>()
     internal fun context(owner: String, environment: String): DockerisContext = contexts.getOrPut(key = "$owner-$environment") {
@@ -55,12 +60,22 @@ abstract class DockerisExtension(private val project: Project) {
 
     fun image(
         name: String = project.name,
-        version: String = project.version.toString(),
+//        version: String = project.version.toString(),
         platform: List<String> = mutableListOf("linux/amd64", "linux/arm64"),
         dependsOn: TaskProvider<Task>? = null,
         builder: DockerisImageTemplateBuilder.(context: DockerisContext) -> Unit
     ) = with(ImageTaskFactory) {
-        createImageTemplateWithItsTasks(project, name, version, platform, dependsOn, builder)
+        createImageTemplateWithItsTasks(project, name, project.version.toString(), platform, dependsOn, builder)
+    }
+
+    fun image(
+        name: String = project.name,
+        version: String = project.version.toString(),
+        platform: List<String> = mutableListOf("linux/amd64", "linux/arm64"),
+        dependsOn: TaskProvider<Task>? = null,
+        builder: DockerisUniversalImageBuilder.() -> Unit
+    ) = with(ImageTaskFactory) {
+        createUniversalImageTemplateWithItsTasks(project, name, version, platform, dependsOn, builder)
     }
 
     internal val stacks = mutableListOf<DockerisStackTemplate>()
@@ -77,6 +92,16 @@ abstract class DockerisExtension(private val project: Project) {
         pass: String,
         workdir: String,
     ) = with(RegistryStackTaskFactory) {
-        createStackTemplateWithItsTasks(project, name, url, user, pass, workdir)
+        createRegistryStackTemplateWithItsTasks(project, name, url, user, pass, workdir)
+    }
+
+    fun runner(
+        name: String,
+        url: String,
+        user: String,
+        pass: String,
+        workdir: String,
+    ) = with(RegistryStackTaskFactory) {
+        createRunnerStackTemplateWithItsTasks(project, name, url, user, pass, workdir)
     }
 }

@@ -67,24 +67,13 @@ object RegistryStackTaskFactory {
                 }
             }
 
-            val base = "/$workdir/apps/${owner}/${stack.name}/$environment"
+            val base = "/$workdir/${stack.name}/$environment"
             val linkWithoutPort = domain.split(":").firstOrNull() ?: domain
-            val createDirectory = run {
-                val task = "$owner-${stack.name}-${environment}-inside-registry-${name}".taskify()
-                project.tasks.register<Exec>("createDirectory$task") {
-                    group = "Dockate Create Directory"
-                    val script = listOf(
-                        "mkdir $base/root -p",
-                        "mkdir $base/data -p"
-                    ).joinToString(separator = " && ") { "sudo $it" }
-                    commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
-                }
-            }
 
             val copyComposeFileForDockerStack = run {
                 val task = "$owner-${stack.name}-${environment}-docker-compose-file-into-registry-${name}".taskify()
                 project.tasks.register<Exec>("copy$task") {
-                    dependsOn(createComposeFile, createDirectory)
+                    dependsOn(createComposeFile)
                     workingDir(dir)
                     commandLine(
                         "sshpass",
@@ -92,7 +81,7 @@ object RegistryStackTaskFactory {
                         pass,
                         "scp",
                         "./docker-compose-$name.yml",
-                        "$user@$linkWithoutPort:$base/docker-stack-compose.yml"
+                        "$user@$linkWithoutPort:$base/docker-compose.yml"
                     )
                 }
             }
@@ -113,7 +102,7 @@ object RegistryStackTaskFactory {
                 project.tasks.register<Exec>("dockerisStackDeploy$task") {
                     group = "Docker Stack Deploy"
                     dependsOn(copyComposeFileForDockerStack, pull)
-                    val script = "cd $base && echo $pass | sudo -S docker stack deploy -c docker-stack-compose.yml $label"
+                    val script = "cd $base && echo $pass | sudo -S docker stack deploy -c docker-compose.yml $label"
                     commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
                 }
             }
@@ -155,22 +144,11 @@ object RegistryStackTaskFactory {
 
             val base = "/$workdir/${stack.name}/$environment"
             val linkWithoutPort = domain.split(":").firstOrNull() ?: domain
-            val createDirectory = run {
-                val task = "$owner-${stack.name}-${environment}-inside-runner-${name}".taskify()
-                project.tasks.register<Exec>("createDirectory$task") {
-                    group = "Dockate Create Directory"
-                    val script = listOf(
-                        "mkdir $base/root -p",
-                        "mkdir $base/data -p"
-                    ).joinToString(separator = " && ") { "sudo $it" }
-                    commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
-                }
-            }
 
             val copyComposeFileForDockerStack = run {
                 val task = "$owner-${stack.name}-${environment}-docker-compose-file-for-registry-${registry.name}-into-runner-${name}".taskify()
                 project.tasks.register<Exec>("copy$task") {
-                    dependsOn(createComposeFile, createDirectory)
+                    dependsOn(createComposeFile)
                     workingDir(dir)
                     commandLine(
                         "sshpass",

@@ -58,8 +58,8 @@ class DockerisServiceBuilder {
 
     class EnvironmentBuilder {
         internal val mappings = mutableMapOf<String, String>()
-        infix fun String.to(value: String) {
-            mappings[this] = value
+        infix fun String.to(value: String?) {
+            mappings[this] = value.toString()
         }
     }
 

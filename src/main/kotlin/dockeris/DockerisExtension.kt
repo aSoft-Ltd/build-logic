@@ -5,6 +5,7 @@ import dockeris.images.DockerisImageTemplateBuilder
 import dockeris.images.DockerisUniversalImageBuilder
 import dockeris.images.DockerisUniversalImageTemplate
 import dockeris.images.ImageTaskFactory
+import dockeris.registries.DockerisRegistry
 import dockeris.stacks.DockerisStackBuilder
 import dockeris.stacks.DockerisStackTemplate
 import dockeris.stacks.LocalStackTaskFactory
@@ -40,6 +41,8 @@ abstract class DockerisExtension(private val project: Project) {
 
     // TODO: Rename to images
     internal val imgs = mutableListOf<DockerisUniversalImageTemplate>()
+
+    internal val registries = mutableListOf<DockerisRegistry>()
 
     private val contexts = mutableMapOf<String, DockerisContext>()
     internal fun context(owner: String, environment: String): DockerisContext = contexts.getOrPut(key = "$owner-$environment") {
@@ -92,7 +95,9 @@ abstract class DockerisExtension(private val project: Project) {
         pass: String,
         workdir: String,
     ) = with(RegistryStackTaskFactory) {
-        createRegistryStackTemplateWithItsTasks(project, name, url, user, pass, workdir)
+        val registry = DockerisRegistry(name, url, user, pass, workdir)
+        registries.add(registry)
+        createRegistryStackTemplateWithItsTasks(project,registry)
     }
 
     fun runner(

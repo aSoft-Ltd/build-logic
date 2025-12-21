@@ -22,11 +22,11 @@ class DockerisServiceTemplate(
         appendDependencies(tab, depth)
     }
 
-    fun toDockerStackComposeFile(context: DockerisContext, domain: String, tab: String, depth: Int) = buildString {
+    fun toDockerStackComposeFile(domain: String, tab: String, depth: Int) = buildString {
         val padding1 = tab.repeat(depth)
         appendLine("${padding1}$name:")
         val padding2 = tab.repeat(depth + 1)
-        val label = (if (image is Image.Unpublished) "$domain/" else "") + image.toQualifiedName(context)
+        val label = (if (image is Image.Unpublished) "$domain/" else "") + "${image.name}:${image.version}"
         appendLine("${padding2}image: $label")
         appendPortsVariablesAndVolumes(tab, depth)
         appendDependencies(tab, depth)

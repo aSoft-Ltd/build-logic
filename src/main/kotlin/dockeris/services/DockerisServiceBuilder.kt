@@ -56,6 +56,18 @@ class DockerisServiceBuilder {
         environments.putAll(variables)
     }
 
+    class EnvironmentBuilder {
+        internal val mappings = mutableMapOf<String, String>()
+        infix fun String.to(value: String) {
+            mappings[this] = value
+        }
+    }
+
+    fun environment(builder: EnvironmentBuilder.() -> Unit) {
+        val e = EnvironmentBuilder().apply(builder)
+        environments.putAll(e.mappings)
+    }
+
     fun env(key: String, value: String) {
         environments[key] = value
     }

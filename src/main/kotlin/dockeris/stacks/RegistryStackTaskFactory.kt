@@ -2,6 +2,7 @@ package dockeris.stacks
 
 import dockeris.DockerisExtension
 import dockeris.images.Image
+import dockeris.registries.DockerisRegistry
 import dockeris.tooling.CreateTextFileTask
 import org.gradle.api.Project
 import org.gradle.api.tasks.Exec
@@ -9,17 +10,16 @@ import org.gradle.kotlin.dsl.register
 import utils.taskify
 
 object RegistryStackTaskFactory {
-
-    var count = 0
     fun DockerisExtension.createRegistryStackTemplateWithItsTasks(
         project: Project,
-        name: String,
-        url: String,
-        user: String,
-        pass: String,
-        workdir: String,
+        registry: DockerisRegistry,
     ) {
-        val domain = url.split("//").lastOrNull() ?: url
+        val name = registry.name
+        val user = registry.user
+        val pass = registry.pass
+        val workdir = registry.workdir
+        val domain = registry.domain
+
         val images = stacks.flatMap { it.services }.map { it.image }.filterIsInstance<Image.Unpublished>()
 
         val buildAndPush = images.map { image ->
@@ -34,7 +34,7 @@ object RegistryStackTaskFactory {
             }
 
             val bld = "dockerisImageBuild$task"
-            if(project.tasks.findByName(bld) == null) project.tasks.register<Exec>(bld) {
+            if (project.tasks.findByName(bld) == null) project.tasks.register<Exec>(bld) {
                 val script = buildList {
                     addAll(listOf("docker", "buildx", "build"))
                     if (image.platforms.isNotEmpty()) {
@@ -63,7 +63,7 @@ object RegistryStackTaskFactory {
                 val task = "$owner-${stack.name}-${environment}-docker-compose-file-for-registry-${name}".taskify()
                 project.tasks.register<CreateTextFileTask>("create$task") {
                     destination.set(dir.map { it.file("docker-compose-$name.yml") })
-                    content.set(stack.toDockerStackComposeFile(domain, context))
+                    content.set(stack.toDockerStackComposeFile(domain))
                 }
             }
 
@@ -137,7 +137,7 @@ object RegistryStackTaskFactory {
         pass: String,
         workdir: String,
     ) {
-        for (stack in stacks) {
+        for (stack in stacks) for (registry in registries) {
             val context = stack.context
             val owner = context.owner
             val environment = context.environment
@@ -146,14 +146,13 @@ object RegistryStackTaskFactory {
             val domain = url.split("//").lastOrNull() ?: url
 
             val createComposeFile = run {
-                val task = "$owner-${stack.name}-${environment}-docker-compose-file-for-runner-${name}".taskify()
+                val task = "$owner-${stack.name}-${environment}-docker-compose-file-for-registry-${registry.name}-in-runner-${name}".taskify()
                 project.tasks.register<CreateTextFileTask>("create$task") {
                     destination.set(dir.map { it.file("docker-compose-$name.yml") })
-                    content.set(stack.toDockerStackComposeFile(domain, context))
+                    content.set(stack.toDockerStackComposeFile(registry.domain))
                 }
             }
 
-//            val base = "/$workdir/apps/${owner}/${stack.name}/$environment"
             val base = "/$workdir/${stack.name}/$environment"
             val linkWithoutPort = domain.split(":").firstOrNull() ?: domain
             val createDirectory = run {
@@ -169,7 +168,7 @@ object RegistryStackTaskFactory {
             }
 
             val copyComposeFileForDockerStack = run {
-                val task = "$owner-${stack.name}-${environment}-docker-compose-file-into-runner-${name}".taskify()
+                val task = "$owner-${stack.name}-${environment}-docker-compose-file-for-registry-${registry.name}-into-runner-${name}".taskify()
                 project.tasks.register<Exec>("copy$task") {
                     dependsOn(createComposeFile, createDirectory)
                     workingDir(dir)
@@ -179,16 +178,18 @@ object RegistryStackTaskFactory {
                         pass,
                         "scp",
                         "./docker-compose-$name.yml",
-                        "$user@$linkWithoutPort:$base/docker-stack-compose.yml"
+                        "$user@$linkWithoutPort:$base/docker-compose.yml"
                     )
                 }
             }
 
             val pull = run {
-                val task = "$owner-${stack.name}-${environment}-inside-runner-${name}".taskify()
+                val task = "$owner-${stack.name}-${environment}-for-registry-${registry.name}-inside-runner-${name}".taskify()
                 project.tasks.register<Exec>("dockerisComposePull$task") {
-                    // TODO: Find a way to add a dependency to push on the registry first
-//                    buildAndPush.forEach { dependsOn(it) }
+                    for (img in stack.services.map { it.image }.filterIsInstance<Image.Unpublished>()) {
+                        val t = "${img.name}-for-registry-${registry.name}".taskify()
+                        dependsOn("dockerisImageBuild$t")
+                    }
                     dependsOn(copyComposeFileForDockerStack)
                     val script = "cd $base && echo $pass | sudo -S docker compose pull"
                     commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
@@ -197,17 +198,17 @@ object RegistryStackTaskFactory {
 
             val label = "$owner-${stack.name}-${environment}"
             val deploy = run {
-                val task = "$owner-${stack.name}-${environment}-inside-runner-${name}".taskify()
+                val task = "$owner-${stack.name}-${environment}-for-registry-${registry.name}-inside-runner-${name}".taskify()
                 project.tasks.register<Exec>("dockerisStackDeploy$task") {
                     group = "Docker Stack Deploy"
                     dependsOn(copyComposeFileForDockerStack, pull)
-                    val script = "cd $base && echo $pass | sudo -S docker stack deploy -c docker-stack-compose.yml $label"
+                    val script = "cd $base && echo $pass | sudo -S docker stack deploy -c docker-compose.yml $label"
                     commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
                 }
             }
 
             val remove = run {
-                val task = "$owner-${stack.name}-${environment}-inside-runner-${name}".taskify()
+                val task = "$owner-${stack.name}-${environment}-for-registry-${registry.name}-inside-runner-${name}".taskify()
                 project.tasks.register<Exec>("dockerisStackRemove$task") {
                     group = "Docker Stack Remove"
                     val script = "echo $pass | sudo -S docker stack remove $label"

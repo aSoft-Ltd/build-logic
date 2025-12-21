@@ -13,9 +13,10 @@ data class DockerisVolume(
             is NfsDriver -> {
                 appendLine("${padding2}driver: local")
                 appendLine("${padding2}driver_opts:")
-                appendLine("${padding3}type: nfs")
-                appendLine("${padding3}o: addr=${driver.address},${driver.permissions},nfsvers=${driver.version}")
-                appendLine("${padding3}device: :${driver.device}")
+                val type = if (driver.version == 4) "nfs4" else "nfs"
+                appendLine("""${padding3}type: $type""")
+                appendLine("""${padding3}o: "addr=${driver.address},${driver.permissions},nfsvers=${driver.version},nolock"""")
+                appendLine("""${padding3}device: ":${driver.device}"""")
             }
         }
     }

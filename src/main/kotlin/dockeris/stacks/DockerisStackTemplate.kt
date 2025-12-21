@@ -23,11 +23,11 @@ class DockerisStackTemplate(
         }
     }
 
-    fun toDockerStackComposeFile(domain: String, context: DockerisContext) = buildString {
+    fun toDockerStackComposeFile(domain: String) = buildString {
         appendLine("services:")
         val tab = "  "
         services.forEach { service ->
-            append(service.toDockerStackComposeFile(context, domain, tab, 1))
+            append(service.toDockerStackComposeFile(domain, tab, 1))
         }
         appendLine("volumes:")
         volumes.forEach { volume ->

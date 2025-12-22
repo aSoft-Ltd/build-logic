@@ -28,10 +28,13 @@ class DockerisStackTemplate(
         val tab = "  "
         services.forEach { service ->
             append(service.toDockerStackComposeFile(domain, tab, 1))
+            appendLine()
         }
+        appendLine()
         appendLine("volumes:")
         volumes.forEach { volume ->
             append(volume.toDockerComposeFile(tab, 1))
+            appendLine()
         }
     }
 }

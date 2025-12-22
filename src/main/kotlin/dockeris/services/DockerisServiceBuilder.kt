@@ -46,12 +46,13 @@ class DockerisServiceBuilder {
         val delay: Duration,
         val retries: Int
     )
+
     sealed interface HealthTest {
         data class CMD(val command: String) : HealthTest
         data class CMD_SHELL(val command: String) : HealthTest
     }
 
-    fun CMD(command: String)  = HealthTest.CMD(command)
+    fun CMD(command: String) = HealthTest.CMD(command)
     fun CMD_SHELL(command: String) = HealthTest.CMD_SHELL(command)
 
     private var healthCheck: HealthCheck? = null
@@ -63,12 +64,31 @@ class DockerisServiceBuilder {
         delay: Duration = interval,
         retries: Int = 5
     ) {
-        healthCheck = HealthCheck(test, interval, timeout, delay,retries)
+        healthCheck = HealthCheck(test, interval, timeout, delay, retries)
     }
 
-    private val dependencies = mutableSetOf<String>()
+    class Dependency(
+        val service: String,
+        val condition: Condition = Condition.STARTED
+    ) {
+        enum class Condition(val value: String) {
+            STARTED("service_started"),
+            HEALTHY("service_healthy"),
+            COMPLETED("service_completed_successfully")
+        }
+    }
+
+    private val dependencies = mutableSetOf<Dependency>()
     fun dependsOn(vararg services: String) {
-        dependencies.addAll(services)
+        dependencies.addAll(services.map { Dependency(it) })
+    }
+
+    fun started(service: String) = Dependency(service, Dependency.Condition.STARTED)
+    fun healthy(service: String) = Dependency(service, Dependency.Condition.HEALTHY)
+    fun completed(service: String) = Dependency(service, Dependency.Condition.COMPLETED)
+
+    fun dependsOn(dependency: Dependency) {
+        dependencies.add(dependency)
     }
 
     private val volumes = mutableListOf<Pair<String, String>>()

@@ -2,6 +2,7 @@ package dockeris.services
 
 import dockeris.DockerisContext
 import dockeris.images.Image
+import dockeris.services.DockerisServiceBuilder.Dependency
 import dockeris.services.DockerisServiceBuilder.HealthCheck
 import dockeris.services.DockerisServiceBuilder.HealthTest
 
@@ -12,7 +13,7 @@ class DockerisServiceTemplate(
     val environments: Map<String, String>,
     val ports: List<Pair<Int, Int>>,
     val check: HealthCheck?,
-    val dependencies: Set<String>,
+    val dependencies: Collection<Dependency>,
     val volumes: List<Pair<String, String>>
 ) {
     fun toDockerComposeFile(context: DockerisContext, tab: String, depth: Int) = buildString {
@@ -23,6 +24,7 @@ class DockerisServiceTemplate(
         if (restart != null) appendLine("${padding2}restart: $restart")
         appendPortsVariablesAndVolumes(tab, depth)
         appendDependencies(tab, depth)
+        appendHealthCheck(tab, depth)
     }
 
     fun toDockerStackComposeFile(domain: String, tab: String, depth: Int) = buildString {
@@ -33,10 +35,11 @@ class DockerisServiceTemplate(
         appendLine("${padding2}image: $label")
         appendPortsVariablesAndVolumes(tab, depth)
         appendDependencies(tab, depth)
-        if (check != null) appendHealthCheck(check, tab, depth)
+        appendHealthCheck(tab, depth)
     }
 
-    private fun StringBuilder.appendHealthCheck(check: HealthCheck, tab: String, depth: Int) {
+    private fun StringBuilder.appendHealthCheck(tab: String, depth: Int) {
+        if (check == null) return
         val padding2 = tab.repeat(depth + 1)
         val padding3 = tab.repeat(depth + 2)
         appendLine("${padding2}healthcheck:")
@@ -77,10 +80,13 @@ class DockerisServiceTemplate(
 
     private fun StringBuilder.appendDependencies(tab: String, depth: Int) {
         if (dependencies.isEmpty()) return
-        val padding = tab.repeat(depth + 1)
-        appendLine("${padding}depends_on:")
-        dependencies.forEach { service ->
-            appendLine("${padding}- $service")
+        val padding1 = tab.repeat(depth + 1)
+        val padding2 = tab.repeat(depth + 2)
+        val padding3 = tab.repeat(depth + 3)
+        appendLine("${padding1}depends_on:")
+        dependencies.forEach { dependency ->
+            appendLine("${padding2}${dependency.service}:")
+            appendLine("${padding3}condition: ${dependency.condition.value}")
         }
     }
 }

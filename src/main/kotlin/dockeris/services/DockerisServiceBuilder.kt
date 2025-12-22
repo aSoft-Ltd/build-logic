@@ -4,6 +4,8 @@ import dockeris.DockerisExtension
 import dockeris.images.DockerisUniversalImageTemplate
 import dockeris.images.Image
 import dockeris.volumes.DockerisVolume
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 class DockerisServiceBuilder {
     private var name: String? = null
@@ -35,6 +37,33 @@ class DockerisServiceBuilder {
     private val ports = mutableListOf<Pair<Int, Int>>()
     fun port(outside: Int, inside: Int) {
         ports.add(outside to inside)
+    }
+
+    class HealthCheck(
+        val test: HealthTest,
+        val interval: Duration,
+        val timeout: Duration,
+        val delay: Duration,
+        val retries: Int
+    )
+    sealed interface HealthTest {
+        data class CMD(val command: String) : HealthTest
+        data class CMD_SHELL(val command: String) : HealthTest
+    }
+
+    fun CMD(command: String)  = HealthTest.CMD(command)
+    fun CMD_SHELL(command: String) = HealthTest.CMD_SHELL(command)
+
+    private var healthCheck: HealthCheck? = null
+
+    fun healthCheck(
+        test: HealthTest,
+        interval: Duration = 10.seconds,
+        timeout: Duration = 5.seconds,
+        delay: Duration = interval,
+        retries: Int = 5
+    ) {
+        healthCheck = HealthCheck(test, interval, timeout, delay,retries)
     }
 
     private val dependencies = mutableSetOf<String>()
@@ -89,6 +118,7 @@ class DockerisServiceBuilder {
         ports = ports,
         environments = environments,
         dependencies = dependencies,
-        volumes = volumes
+        volumes = volumes,
+        check = healthCheck
     )
 }

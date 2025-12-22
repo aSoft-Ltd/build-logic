@@ -2,6 +2,8 @@ package dockeris.services
 
 import dockeris.DockerisContext
 import dockeris.images.Image
+import dockeris.services.DockerisServiceBuilder.HealthCheck
+import dockeris.services.DockerisServiceBuilder.HealthTest
 
 class DockerisServiceTemplate(
     var name: String,
@@ -9,6 +11,7 @@ class DockerisServiceTemplate(
     val restart: String?,
     val environments: Map<String, String>,
     val ports: List<Pair<Int, Int>>,
+    val check: HealthCheck?,
     val dependencies: Set<String>,
     val volumes: List<Pair<String, String>>
 ) {
@@ -30,6 +33,22 @@ class DockerisServiceTemplate(
         appendLine("${padding2}image: $label")
         appendPortsVariablesAndVolumes(tab, depth)
         appendDependencies(tab, depth)
+        if (check != null) appendHealthCheck(check, tab, depth)
+    }
+
+    private fun StringBuilder.appendHealthCheck(check: HealthCheck, tab: String, depth: Int) {
+        val padding2 = tab.repeat(depth + 1)
+        val padding3 = tab.repeat(depth + 2)
+        appendLine("${padding2}healthcheck:")
+        val test = when (check.test) {
+            is HealthTest.CMD -> """["CMD", "${check.test.command}"]"""
+            is HealthTest.CMD_SHELL -> """["CMD-SHELL", "${check.test.command}"]"""
+        }
+        appendLine("${padding3}test: $test")
+        appendLine("${padding3}interval: ${check.interval.inWholeSeconds}s")
+        appendLine("${padding3}timeout: ${check.timeout.inWholeSeconds}s")
+        appendLine("${padding3}start_period: ${check.delay.inWholeSeconds}s")
+        appendLine("${padding3}retries: ${check.retries}")
     }
 
     private fun StringBuilder.appendPortsVariablesAndVolumes(tab: String, depth: Int) {

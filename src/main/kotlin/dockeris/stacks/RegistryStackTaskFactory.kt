@@ -175,6 +175,36 @@ object RegistryStackTaskFactory {
             }
 
             val label = "$owner-${stack.name}-${environment}"
+            val remove = run {
+                val task = "$owner-${stack.name}-${environment}-for-registry-${registry.name}-inside-runner-${name}".taskify()
+                project.tasks.register<Exec>("dockerisStackRemove$task") {
+                    group = "Docker Stack Remove"
+                    val script = "echo $pass | sudo -S docker stack remove $label"
+                    commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
+                }
+            }
+
+            val deleteImageTaskList = stack.services.map { it.image }.filterIsInstance<Image.Unpublished>().map { image ->
+                val task = "delete-image-${image.name}-for-registry-${registry.name}-inside-runner-${name}".taskify()
+
+                if (project.tasks.findByName(task) == null) project.tasks.register<Exec>(task) {
+                    group = "Docker Image Remove"
+                    val script = "echo $pass | sudo -S docker image rm ${registry.domain}/${image.name}:${image.version}"
+                    commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
+                }
+                project.tasks.named(task)
+            }
+
+            val deleteAllImagesTask = run {
+                val task = "delete-all-images-for-registry-${registry.name}-inside-runner-${name}".taskify()
+                if (project.tasks.findByName(task) == null) project.tasks.register(task) {
+                    group = "Docker Image Remove"
+                    dependsOn(remove)
+                    if (deleteImageTaskList.isNotEmpty()) dependsOn(deleteImageTaskList)
+                }
+                project.tasks.named(task)
+            }
+
             val deploy = run {
                 val task = "$owner-${stack.name}-${environment}-for-registry-${registry.name}-inside-runner-${name}".taskify()
                 project.tasks.register<Exec>("dockerisStackDeploy$task") {
@@ -185,11 +215,12 @@ object RegistryStackTaskFactory {
                 }
             }
 
-            val remove = run {
+            val cleanDeploy = run {
                 val task = "$owner-${stack.name}-${environment}-for-registry-${registry.name}-inside-runner-${name}".taskify()
-                project.tasks.register<Exec>("dockerisStackRemove$task") {
-                    group = "Docker Stack Remove"
-                    val script = "echo $pass | sudo -S docker stack remove $label"
+                project.tasks.register<Exec>("cleanDockerisStackDeploy$task") {
+                    group = "Docker Stack Deploy"
+                    dependsOn(copyComposeFileForDockerStack, pull, remove, deleteAllImagesTask)
+                    val script = "cd $base && echo $pass | sudo -S docker stack deploy -c docker-compose.yml $label"
                     commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
                 }
             }

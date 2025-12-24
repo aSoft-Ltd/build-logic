@@ -57,21 +57,21 @@ object RegistryStackTaskFactory {
             val context = stack.context
             val owner = context.owner
             val environment = context.environment
-            val dir = directory.map { it.dir("$owner/${environment}/stacks/registry/${stack.name}") }
+            val dir = directory.map { it.dir("${owner.name}/${environment.name}/stacks/registry/${stack.name}") }
 
             val createComposeFile = run {
-                val task = "$owner-${stack.name}-${environment}-docker-compose-file-for-registry-${name}".taskify()
+                val task = "${owner.name}-${stack.name}-${environment.name}-docker-compose-file-for-registry-${name}".taskify()
                 project.tasks.register<CreateTextFileTask>("create$task") {
                     destination.set(dir.map { it.file("docker-compose-$name.yml") })
                     content.set(stack.toDockerStackComposeFile(domain))
                 }
             }
 
-            val base = "/$workdir/${stack.name}/$environment"
+            val base = "/$workdir/${stack.name}/${environment.name}"
             val linkWithoutPort = domain.split(":").firstOrNull() ?: domain
 
             val copyComposeFileForDockerStack = run {
-                val task = "$owner-${stack.name}-${environment}-docker-compose-file-into-registry-${name}".taskify()
+                val task = "${owner.name}-${stack.name}-${environment.name}-docker-compose-file-into-registry-${name}".taskify()
                 project.tasks.register<Exec>("copy$task") {
                     dependsOn(createComposeFile)
                     workingDir(dir)
@@ -86,9 +86,9 @@ object RegistryStackTaskFactory {
                 }
             }
 
-            val label = "$owner-${stack.name}-${environment}"
+            val label = "${owner.name}-${stack.name}-${environment.name}"
             val remove = run {
-                val task = "$owner-${stack.name}-${environment}-inside-registry-${name}".taskify()
+                val task = "${owner.name}-${stack.name}-${environment.name}-inside-registry-${name}".taskify()
                 project.tasks.register<Exec>("dockerisStackRemove$task") {
                     group = "Docker Stack Remove"
                     val script = "echo $pass | sudo -S docker stack remove $label"
@@ -118,7 +118,7 @@ object RegistryStackTaskFactory {
             }
 
             val pull = run {
-                val task = "$owner-${stack.name}-${environment}-inside-registry-${name}".taskify()
+                val task = "${owner.name}-${stack.name}-${environment.name}-inside-registry-${name}".taskify()
                 project.tasks.register<Exec>("dockerisComposePull$task") {
                     buildAndPush.forEach { dependsOn(it) }
                     dependsOn(copyComposeFileForDockerStack)
@@ -128,7 +128,7 @@ object RegistryStackTaskFactory {
             }
 
             val deploy = run {
-                val task = "$owner-${stack.name}-${environment}-inside-registry-${name}".taskify()
+                val task = "${owner.name}-${stack.name}-${environment.name}-inside-registry-${name}".taskify()
                 project.tasks.register<Exec>("dockerisStackDeploy$task") {
                     group = "Docker Stack Deploy"
                     dependsOn(copyComposeFileForDockerStack, pull)
@@ -138,7 +138,7 @@ object RegistryStackTaskFactory {
             }
 
             val cleanDeploy = run {
-                val task = "$owner-${stack.name}-${environment}-inside-registry-${registry.name}".taskify()
+                val task = "${owner.name}-${stack.name}-${environment.name}-inside-registry-${registry.name}".taskify()
                 project.tasks.register<Exec>("cleanDockerisStackDeploy$task") {
                     group = "Docker Stack Deploy"
                     dependsOn(copyComposeFileForDockerStack, pull, remove, deleteAllImagesTask)
@@ -161,23 +161,23 @@ object RegistryStackTaskFactory {
             val context = stack.context
             val owner = context.owner
             val environment = context.environment
-            val dir = directory.map { it.dir("$owner/${environment}/stacks/runner/$name/${stack.name}") }
+            val dir = directory.map { it.dir("${owner.name}/${environment.name}/stacks/runner/$name/${stack.name}") }
 
             val domain = url.split("//").lastOrNull() ?: url
 
             val createComposeFile = run {
-                val task = "$owner-${stack.name}-${environment}-docker-compose-file-for-registry-${registry.name}-in-runner-${name}".taskify()
+                val task = "${owner.name}-${stack.name}-${environment.name}-docker-compose-file-for-registry-${registry.name}-in-runner-${name}".taskify()
                 project.tasks.register<CreateTextFileTask>("create$task") {
                     destination.set(dir.map { it.file("docker-compose-$name.yml") })
                     content.set(stack.toDockerStackComposeFile(registry.domain))
                 }
             }
 
-            val base = "/$workdir/${stack.name}/$environment"
+            val base = "/$workdir/${stack.name}/${environment.name}"
             val linkWithoutPort = domain.split(":").firstOrNull() ?: domain
 
             val copyComposeFileForDockerStack = run {
-                val task = "$owner-${stack.name}-${environment}-docker-compose-file-for-registry-${registry.name}-into-runner-${name}".taskify()
+                val task = "${owner.name}-${stack.name}-${environment.name}-docker-compose-file-for-registry-${registry.name}-into-runner-${name}".taskify()
                 project.tasks.register<Exec>("copy$task") {
                     dependsOn(createComposeFile)
                     workingDir(dir)
@@ -193,7 +193,7 @@ object RegistryStackTaskFactory {
             }
 
             val pull = run {
-                val task = "$owner-${stack.name}-${environment}-for-registry-${registry.name}-inside-runner-${name}".taskify()
+                val task = "${owner.name}-${stack.name}-${environment.name}-for-registry-${registry.name}-inside-runner-${name}".taskify()
                 project.tasks.register<Exec>("dockerisComposePull$task") {
                     for (img in stack.services.map { it.image }.filterIsInstance<Image.Unpublished>()) {
                         val t = "${img.name}-for-registry-${registry.name}".taskify()
@@ -205,9 +205,9 @@ object RegistryStackTaskFactory {
                 }
             }
 
-            val label = "$owner-${stack.name}-${environment}"
+            val label = "${owner.name}-${stack.name}-${environment.name}"
             val remove = run {
-                val task = "$owner-${stack.name}-${environment}-for-registry-${registry.name}-inside-runner-${name}".taskify()
+                val task = "${owner.name}-${stack.name}-${environment.name}-for-registry-${registry.name}-inside-runner-${name}".taskify()
                 project.tasks.register<Exec>("dockerisStackRemove$task") {
                     group = "Docker Stack Remove"
                     val script = "echo $pass | sudo -S docker stack remove $label"
@@ -237,7 +237,7 @@ object RegistryStackTaskFactory {
             }
 
             val deploy = run {
-                val task = "$owner-${stack.name}-${environment}-for-registry-${registry.name}-inside-runner-${name}".taskify()
+                val task = "${owner.name}-${stack.name}-${environment.name}-for-registry-${registry.name}-inside-runner-${name}".taskify()
                 project.tasks.register<Exec>("dockerisStackDeploy$task") {
                     group = "Docker Stack Deploy"
                     dependsOn(copyComposeFileForDockerStack, pull)
@@ -247,7 +247,7 @@ object RegistryStackTaskFactory {
             }
 
             val cleanDeploy = run {
-                val task = "$owner-${stack.name}-${environment}-for-registry-${registry.name}-inside-runner-${name}".taskify()
+                val task = "${owner.name}-${stack.name}-${environment.name}-for-registry-${registry.name}-inside-runner-${name}".taskify()
                 project.tasks.register<Exec>("cleanDockerisStackDeploy$task") {
                     group = "Docker Stack Deploy"
                     dependsOn(copyComposeFileForDockerStack, pull, remove, deleteAllImagesTask)

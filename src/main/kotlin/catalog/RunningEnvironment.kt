@@ -1,7 +1,7 @@
 package catalog
 
 enum class RunningEnvironment {
-    prodution, staging, development;
+    production, staging, development;
 
     fun capitalized() = name.replaceFirstChar { it.uppercase() }
 }

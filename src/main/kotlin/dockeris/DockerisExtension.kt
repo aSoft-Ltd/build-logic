@@ -3,8 +3,6 @@ package dockeris
 import catalog.DeployableProject
 import catalog.Owner
 import catalog.RunningEnvironment
-import dockeris.images.DockerisImageTemplate
-import dockeris.images.DockerisImageTemplateBuilder
 import dockeris.images.DockerisUniversalImageBuilder
 import dockeris.images.DockerisUniversalImageTemplate
 import dockeris.images.ImageTaskFactory
@@ -39,12 +37,7 @@ abstract class DockerisExtension(private val project: Project) {
         owners.addAll(them)
     }
 
-    @Deprecated("in favour of imgs")
-    internal val images = mutableListOf<DockerisImageTemplate>()
-
-    // TODO: Rename to images
-    internal val imgs = mutableListOf<DockerisUniversalImageTemplate>()
-
+    internal val images = mutableListOf<DockerisUniversalImageTemplate>()
     internal val registries = mutableListOf<DockerisRegistry>()
     private val contexts = mutableMapOf<String, DockerisContext>()
 
@@ -76,16 +69,6 @@ abstract class DockerisExtension(private val project: Project) {
         val result = mutableListOf<R>()
         each { result.add(transform(it)) }
         return result
-    }
-
-    fun image(
-        name: String = project.name,
-//        version: String = project.version.toString(),
-        platform: List<String> = mutableListOf("linux/amd64", "linux/arm64"),
-        dependsOn: TaskProvider<Task>? = null,
-        builder: DockerisImageTemplateBuilder.(context: DockerisContext) -> Unit
-    ) = with(ImageTaskFactory) {
-        createImageTemplateWithItsTasks(project, name, project.version.toString(), platform, dependsOn, builder)
     }
 
     fun image(

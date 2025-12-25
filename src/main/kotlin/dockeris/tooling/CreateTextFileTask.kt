@@ -1,7 +1,5 @@
 package dockeris.tooling
 
-import dockeris.DockerisContext
-import dockeris.images.DockerisImageTemplateBuilder
 import dockeris.images.DockerisUniversalImageBuilder
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
@@ -28,17 +26,6 @@ abstract class CreateTextFileTask : DefaultTask() {
     }
 
     companion object {
-        internal fun register(
-            project: Project,
-            dependency: DockerisImageTemplateBuilder.DependencyFile,
-            context: DockerisContext,
-        ): TaskProvider<CreateTextFileTask> {
-            val env = context.environment
-            val owner = context.owner
-            val task = "createDockeris${dependency.name.capitalized()}DependencyFileFor${owner.capitalized()}${env}Environment".taskify()
-            return project.tasks.register(task, CreateTextFileTask::class.java)
-        }
-
         internal fun register(
             project: Project,
             dependency: DockerisUniversalImageBuilder.DependencyFile

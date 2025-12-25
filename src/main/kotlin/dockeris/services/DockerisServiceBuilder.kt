@@ -117,20 +117,13 @@ class DockerisServiceBuilder {
         environments.putAll(e.mappings)
     }
 
-    fun env(key: String, value: String) {
-        environments[key] = value
-    }
-
     internal fun build(extension: DockerisExtension) = DockerisServiceTemplate(
         name = name ?: throw IllegalArgumentException("Service name is required"),
         image = run {
             val name = imageName ?: throw IllegalArgumentException("Image name is required")
-            val universal = extension.imgs.find { it.name == name }
-            val contextual = extension.images.find { it.name == name }
+            val universal = extension.images.find { it.name == name }
             when {
-                contextual != null && universal != null -> Image.Unpublished(name, universal.version, universal.platforms)
-                contextual != null && universal == null -> Image.Unpublished(name, contextual.version, contextual.platforms)
-                contextual == null && universal != null -> Image.Unpublished(name, universal.version, universal.platforms)
+                universal != null -> Image.Unpublished(name, universal.version, universal.platforms)
                 else -> Image.Published(name, imageVersion ?: "latest")
             }
         },

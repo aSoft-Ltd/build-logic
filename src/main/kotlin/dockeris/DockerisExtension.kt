@@ -1,9 +1,12 @@
 package dockeris
 
-import dockeris.images.DockerisImageTemplate
-import dockeris.images.DockerisImageTemplateBuilder
+import catalog.DeployableProject
+import catalog.Owner
+import catalog.RunningEnvironment
+import dockeris.images.DockerisUniversalImageBuilder
+import dockeris.images.DockerisUniversalImageTemplate
 import dockeris.images.ImageTaskFactory
-import dockeris.services.DockerisServiceTemplate
+import dockeris.registries.DockerisRegistry
 import dockeris.stacks.DockerisStackBuilder
 import dockeris.stacks.DockerisStackTemplate
 import dockeris.stacks.LocalStackTaskFactory
@@ -24,26 +27,41 @@ abstract class DockerisExtension(private val project: Project) {
 
     abstract val directory: DirectoryProperty
 
-    internal val environments = mutableListOf<String>()
-    fun environments(vararg names: String) {
-        environments.addAll(names)
+    internal val environments = mutableListOf<RunningEnvironment>()
+    fun environments(vararg them: RunningEnvironment) {
+        environments.addAll(them)
     }
 
-    internal val owners = mutableListOf<String>()
-    fun owners(vararg names: String) {
-        owners.addAll(names)
+    internal val owners = mutableListOf<Owner>()
+    fun owners(vararg them: Owner) {
+        owners.addAll(them)
     }
 
-    internal val images = mutableListOf<DockerisImageTemplate>()
-
+    internal val images = mutableListOf<DockerisUniversalImageTemplate>()
+    internal val registries = mutableListOf<DockerisRegistry>()
     private val contexts = mutableMapOf<String, DockerisContext>()
-    internal fun context(owner: String, environment: String): DockerisContext = contexts.getOrPut(key = "$owner-$environment") {
-        DockerisContext(environment, owner)
+
+    private var deploying: DeployableProject? = null
+    fun deploying(project: DeployableProject) {
+        deploying = project
+    }
+
+    internal fun context(owner: Owner, project: DeployableProject, environment: RunningEnvironment): DockerisContext = contexts.getOrPut(key = "${owner.name}-${environment.name}") {
+        DockerisContext(owner, project, environment)
     }
 
     internal fun each(block: (DockerisContext) -> Unit) {
+        val p = deploying ?: throw IllegalStateException(
+            """
+                |DeployableProject is not initialized yet.
+                |Do setup the deployable project before using dockeris
+                |dockeris {
+                |    deploying(Projects.academia)
+                |}
+                |""".trimMargin()
+        )
         for (owner in owners) for (environment in environments) {
-            block(context(owner, environment))
+            block(context(owner, p, environment))
         }
     }
 
@@ -58,9 +76,9 @@ abstract class DockerisExtension(private val project: Project) {
         version: String = project.version.toString(),
         platform: List<String> = mutableListOf("linux/amd64", "linux/arm64"),
         dependsOn: TaskProvider<Task>? = null,
-        builder: DockerisImageTemplateBuilder.(context: DockerisContext) -> Unit
+        builder: DockerisUniversalImageBuilder.() -> Unit
     ) = with(ImageTaskFactory) {
-        createImageTemplateWithItsTasks(project, name, version, platform, dependsOn, builder)
+        createUniversalImageTemplateWithItsTasks(project, name, version, platform, dependsOn, builder)
     }
 
     internal val stacks = mutableListOf<DockerisStackTemplate>()
@@ -77,6 +95,18 @@ abstract class DockerisExtension(private val project: Project) {
         pass: String,
         workdir: String,
     ) = with(RegistryStackTaskFactory) {
-        createStackTemplateWithItsTasks(project, name, url, user, pass, workdir)
+        val registry = DockerisRegistry(name, url, user, pass, workdir)
+        registries.add(registry)
+        createRegistryStackTemplateWithItsTasks(project, registry)
+    }
+
+    fun runner(
+        name: String,
+        url: String,
+        user: String,
+        pass: String,
+        workdir: String,
+    ) = with(RegistryStackTaskFactory) {
+        createRunnerStackTemplateWithItsTasks(project, name, url, user, pass, workdir)
     }
 }

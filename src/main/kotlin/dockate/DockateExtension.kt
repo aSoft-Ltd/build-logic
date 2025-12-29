@@ -226,7 +226,7 @@ abstract class DockateExtension(internal val project: Project) {
                     "mkdir $base/root -p",
                     "mkdir $base/data -p"
                 ).joinToString(" && ")
-                commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
+                commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "\"$script && exit; /bin/bash\"")
             }
 
             val copyComposeFileForDockerCompose = tasks.register<Exec>("copyDockerComposeFileDockerCompose${trail("To")}") {

@@ -15,16 +15,13 @@ object DockerfileTaskFactory {
     internal fun register(
         project: Project,
         extension: DockerisExtension,
-        template: DockerisImageTemplate,
-        dependency: TaskProvider<Task>?,
-        context: DockerisContext
+        template: DockerisUniversalImageTemplate,
+        dependency: TaskProvider<Task>?
     ): TaskProvider<CreateTextFileTask> {
-        val env = context.environment
-        val owner = context.owner
-        val dir = extension.directory.map { it.dir("$owner/${env}/images/${template.name}") }
-        val builder = template.builder(context)
+        val dir = extension.directory.map { it.dir("images/${template.name}") }
+        val builder = template.builder
         val copies = builder.copy.map { copy ->
-            val task = "copyDockeris${copy.destination.capitalized()}DirectoryFor${owner.capitalized()}${env.capitalized()}Environment".taskify()
+            val task = "copyDockeris${copy.destination.capitalized()}Directory".taskify()
             project.tasks.register<Copy>(task) {
                 from(copy.source)
                 into(dir.map { it.file(copy.destination) })
@@ -32,20 +29,20 @@ object DockerfileTaskFactory {
             }
         }
         val files = builder.dependencies.map { dep ->
-            CreateTextFileTask.register(project, dep, context).apply {
+            CreateTextFileTask.register(project, dep).apply {
                 configure {
                     val task = this
-                    task.content.set(dep.builder.build(context))
+                    task.content.set(dep.builder.build())
                     task.destination.set(dir.map { it.file(dep.destination) })
                     dependsOn(dependency)
                 }
             }
         }
 
-        val label = "$owner-${template.name}-${env}-dockerfile".taskify()
+        val label = "${template.name}-dockerfile".taskify()
         return project.tasks.register<CreateTextFileTask>("create$label") {
             val main = this
-            main.content.set(template.build(context))
+            main.content.set(builder.build())
             main.destination.set(dir.map { it.file("Dockerfile") })
             for (task in (files + copies + dependency)) main.dependsOn(task)
         }

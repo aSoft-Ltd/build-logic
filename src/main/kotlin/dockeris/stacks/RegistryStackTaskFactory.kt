@@ -268,7 +268,7 @@ object RegistryStackTaskFactory {
 
             val cleanBuildDeploy = run {
                 val task = "${owner.name}-${stack.name}-${environment.name}-for-registry-${registry.name}-inside-runner-${name}".taskify()
-                project.tasks.register<Exec>("cleanDockerisStackCleanBuildDeploy$task") {
+                project.tasks.register<Exec>("dockerisStackCleanBuildDeploy$task") {
                     group = "Docker Stack Deploy"
                     dependsOn(copyComposeFileForDockerStack, pull, remove, deleteAllImagesTask)
                     val script = "cd $base && echo $pass | sudo -S docker stack deploy -c docker-compose.yml $label"

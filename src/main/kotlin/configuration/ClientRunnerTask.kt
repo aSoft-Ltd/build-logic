@@ -17,6 +17,9 @@ abstract class ClientRunnerTask : DefaultTask() {
     @get:Input
     internal abstract val pkg: Property<String>
 
+    @get:Input
+    internal abstract val version: Property<String>
+
     @TaskAction
     fun generate() {
         val raw = src.get().asFile.readText()
@@ -54,6 +57,8 @@ abstract class ClientRunnerTask : DefaultTask() {
             }
             
             fun configuration(): ClientConfig = serializer.decodeFromString(ClientConfig.serializer(), json)
+            
+            val ClientConfig.version: String get() = "${version.get()}"
         """.trimIndent()
         )
     }

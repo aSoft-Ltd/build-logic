@@ -5,6 +5,7 @@ import dockeris.images.Image
 import dockeris.registries.DockerisRegistry
 import dockeris.tooling.CreateTextFileTask
 import org.gradle.api.Project
+import org.gradle.api.logging.LogLevel
 import org.gradle.api.tasks.Exec
 import org.gradle.kotlin.dsl.register
 import utils.taskify
@@ -191,20 +192,27 @@ object RegistryStackTaskFactory {
                 project.tasks.register<Exec>("copy$task") {
                     dependsOn(createComposeFile)
                     workingDir(dir)
+                    logging.captureStandardOutput(LogLevel.INFO)
+                    logging.captureStandardError(LogLevel.ERROR)
+                    standardOutput = System.out
                     commandLine(
                         "sshpass",
                         "-p",
                         pass,
                         "scp",
+                        "-o", "StrictHostKeyChecking=no",
+                        "-o", "UserKnownHostsFile=/dev/null",
                         "./docker-compose-$name.yml",
                         "$user@$linkWithoutPort:$base/docker-compose.yml"
                     )
+                    doNotTrackState("Always copy the file to runner")
                 }
             }
 
             val pull = run {
                 val task = "${owner.name}-${stack.name}-${environment.name}-for-registry-${registry.name}-inside-runner-${name}".taskify()
                 project.tasks.register<Exec>("dockerisComposePull$task") {
+                    doNotTrackState("This is a ssh command")
                     for (img in stack.services.map { it.image }.filterIsInstance<Image.Unpublished>()) {
                         val t = "${img.name}-for-registry-${registry.name}".taskify()
                         dependsOn("dockerisImageBuild$t")
@@ -219,6 +227,7 @@ object RegistryStackTaskFactory {
             val remove = run {
                 val task = "${owner.name}-${stack.name}-${environment.name}-for-registry-${registry.name}-inside-runner-${name}".taskify()
                 project.tasks.register<Exec>("dockerisStackRemove$task") {
+                    doNotTrackState("This is a ssh command")
                     group = "Docker Stack Remove"
                     val script = "echo $pass | sudo -S docker stack remove $label"
                     commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
@@ -230,6 +239,7 @@ object RegistryStackTaskFactory {
 
                 if (project.tasks.findByName(task) == null) project.tasks.register<Exec>(task) {
                     group = "Docker Image Remove"
+                    doNotTrackState("This is a ssh command")
                     val script = "echo $pass | sudo -S docker image rm ${registry.domain}/${image.name}:${image.version}"
                     commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")
                     dependsOn(remove)
@@ -249,6 +259,7 @@ object RegistryStackTaskFactory {
             val deploy = run {
                 val task = "${owner.name}-${stack.name}-${environment.name}-for-registry-${registry.name}-inside-runner-${name}".taskify()
                 project.tasks.register<Exec>("dockerisStackDeploy$task") {
+                    doNotTrackState("This is a ssh command")
                     group = "Docker Stack Deploy"
                     dependsOn(copyComposeFileForDockerStack)
                     val script = "cd $base && echo $pass | sudo -S docker stack deploy -c docker-compose.yml $label"
@@ -259,6 +270,7 @@ object RegistryStackTaskFactory {
             val buildDeploy = run {
                 val task = "${owner.name}-${stack.name}-${environment.name}-for-registry-${registry.name}-inside-runner-${name}".taskify()
                 project.tasks.register<Exec>("dockerisStackBuildDeploy$task") {
+                    doNotTrackState("This is a ssh command")
                     group = "Docker Stack Deploy"
                     dependsOn(copyComposeFileForDockerStack, pull)
                     val script = "cd $base && echo $pass | sudo -S docker stack deploy -c docker-compose.yml $label"
@@ -269,6 +281,7 @@ object RegistryStackTaskFactory {
             val cleanBuildDeploy = run {
                 val task = "${owner.name}-${stack.name}-${environment.name}-for-registry-${registry.name}-inside-runner-${name}".taskify()
                 project.tasks.register<Exec>("dockerisStackCleanBuildDeploy$task") {
+                    doNotTrackState("This is a ssh command")
                     group = "Docker Stack Deploy"
                     dependsOn(copyComposeFileForDockerStack, pull, remove, deleteAllImagesTask)
                     val script = "cd $base && echo $pass | sudo -S docker stack deploy -c docker-compose.yml $label"

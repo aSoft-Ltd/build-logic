@@ -97,7 +97,18 @@ abstract class DockerisExtension(private val project: Project) {
     ) = with(RegistryStackTaskFactory) {
         val registry = DockerisRegistry(name, url, user, pass, workdir)
         registries.add(registry)
+//        createImageTasksInRelationToRegistry(project, registry)
         createRegistryStackTemplateWithItsTasks(project, registry)
+    }
+
+    fun registry(
+        name: String,
+        url: String,
+    ) = with(RegistryStackTaskFactory) {
+//        val registry = DockerisRegistry(name, url, user, pass, workdir)
+//        registries.add(registry)
+        createImageTasksInRelationToRegistry(project, name,url.substringAfter("://"))
+//        createRegistryStackTemplateWithItsTasks(project, registry)
     }
 
     fun runner(

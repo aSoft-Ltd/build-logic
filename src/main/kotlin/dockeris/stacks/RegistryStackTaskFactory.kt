@@ -7,34 +7,27 @@ import dockeris.tooling.CreateTextFileTask
 import org.gradle.api.Project
 import org.gradle.api.logging.LogLevel
 import org.gradle.api.tasks.Exec
+import org.gradle.internal.extensions.stdlib.capitalized
 import org.gradle.kotlin.dsl.register
 import utils.taskify
 
 object RegistryStackTaskFactory {
-    fun DockerisExtension.createRegistryStackTemplateWithItsTasks(
+    fun DockerisExtension.createImageTasksInRelationToRegistry(
         project: Project,
-        registry: DockerisRegistry,
+        name: String,
+        domain: String
     ) {
-        val name = registry.name
-        val user = registry.user
-        val pass = registry.pass
-        val workdir = registry.workdir
-        val domain = registry.domain
-
-        val images = stacks.flatMap { it.services }.map { it.image }.filterIsInstance<Image.Unpublished>()
-
-        val buildAndPush = images.map { image ->
-            val task = "${image.name}-for-registry-${name}".taskify()
+        images.map { image ->
             val tag = "$domain/${image.name}:${image.version}"
             val location = directory.map { it.dir("images/${image.name}") }
 
-            val rm = "dockerisImageRemove$task"
+            val rm = "dockerisImageRemove${image.name.taskify().capitalized()}From${name.taskify().capitalized()}Registry"
             if (project.tasks.findByName(rm) == null) project.tasks.register<Exec>(rm) {
                 commandLine("docker", "image", "rm", tag)
                 workingDir(location)
             }
 
-            val bld = "dockerisImageBuild$task"
+            val bld = "dockerisImageBuildAndPush${image.name.taskify().capitalized()}To${name.taskify().capitalized()}Registry"
             if (project.tasks.findByName(bld) == null) project.tasks.register<Exec>(bld) {
                 val script = buildList {
                     addAll(listOf("docker", "buildx", "build"))
@@ -53,6 +46,17 @@ object RegistryStackTaskFactory {
             }
             project.tasks.named(bld)
         }
+    }
+
+    fun DockerisExtension.createRegistryStackTemplateWithItsTasks(
+        project: Project,
+        registry: DockerisRegistry,
+    ) {
+        val name = registry.name
+        val user = registry.user
+        val pass = registry.pass
+        val workdir = registry.workdir
+        val domain = registry.domain
 
         for (stack in stacks) {
             val context = stack.context
@@ -121,7 +125,7 @@ object RegistryStackTaskFactory {
             val pull = run {
                 val task = "${owner.name}-${stack.name}-${environment.name}-inside-registry-${name}".taskify()
                 project.tasks.register<Exec>("dockerisComposePull$task") {
-                    buildAndPush.forEach { dependsOn(it) }
+                    // buildAndPush.forEach { dependsOn(it) } TODO: If we intend to support this, perhaps we should then create a dependency to a docker build and push task
                     dependsOn(copyComposeFileForDockerStack)
                     val script = "cd $base && echo $pass | sudo -S docker compose pull"
                     commandLine("sshpass", "-p", pass, "ssh", "-t", "$user@$linkWithoutPort", "$script && exit; /bin/bash")

@@ -5,8 +5,8 @@ import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.tasks.Exec
 import org.gradle.api.tasks.TaskProvider
-import org.gradle.configurationcache.extensions.capitalized
 import org.gradle.kotlin.dsl.register
+import utils.capitalized
 import utils.taskify
 
 internal object ImageTaskFactory {

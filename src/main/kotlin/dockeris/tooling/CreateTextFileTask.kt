@@ -9,7 +9,7 @@ import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.TaskProvider
-import org.gradle.configurationcache.extensions.capitalized
+import utils.capitalized
 import utils.taskify
 
 abstract class CreateTextFileTask : DefaultTask() {

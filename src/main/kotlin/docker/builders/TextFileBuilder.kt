@@ -12,8 +12,8 @@ import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.Copy
 import org.gradle.api.tasks.Delete
 import org.gradle.api.tasks.TaskProvider
-import org.gradle.configurationcache.extensions.capitalized
 import org.gradle.kotlin.dsl.register
+import utils.capitalized
 import utils.taskify
 
 open class TextFileBuilder(

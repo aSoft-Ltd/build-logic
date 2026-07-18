@@ -1,22 +1,22 @@
 package dockate.builders
 
-import docker.builders.PlainDockerComposeFileBuilder
-import docker.builders.PlainDockerServiceBuilderDsl
-import docker.builders.map
-import docker.builders.toRawText
 import dockate.models.Isolate
 import dockate.models.ScopedDeploymentEnvironment
 import dockate.models.ScopedDockerComposeFile
 import dockate.models.ScopedDockerVolume
 import dockate.models.ScopedDockerVolumes
 import dockate.tasks.CreateDockerComposeFileTask
+import docker.builders.PlainDockerComposeFileBuilder
+import docker.builders.PlainDockerServiceBuilderDsl
+import docker.builders.map
+import docker.builders.toRawText
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.tasks.Exec
 import org.gradle.api.tasks.TaskCollection
 import org.gradle.api.tasks.TaskProvider
-import org.gradle.configurationcache.extensions.capitalized
 import org.gradle.kotlin.dsl.register
+import utils.capitalized
 import utils.hyphenize
 import utils.taskify
 

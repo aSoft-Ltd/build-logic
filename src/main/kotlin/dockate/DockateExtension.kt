@@ -11,11 +11,11 @@ import org.gradle.api.Task
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.tasks.Exec
 import org.gradle.api.tasks.TaskProvider
-import org.gradle.configurationcache.extensions.capitalized
 import org.gradle.kotlin.dsl.listProperty
 import org.gradle.kotlin.dsl.register
 import utils.hyphenize
 import utils.taskify
+import utils.capitalized
 
 abstract class DockateExtension(internal val project: Project) {
     abstract val output: DirectoryProperty

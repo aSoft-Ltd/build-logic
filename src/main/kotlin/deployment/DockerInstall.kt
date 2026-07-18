@@ -4,8 +4,8 @@ import deployment.builders.dockerComposeFile
 import docker.builders.toRawText
 import org.gradle.api.Project
 import org.gradle.api.tasks.Exec
-import org.gradle.configurationcache.extensions.capitalized
 import org.gradle.kotlin.dsl.register
+import utils.capitalized
 
 internal fun Project.addInstallDockerTasks(
     name: String,

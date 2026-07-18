@@ -1,14 +1,13 @@
 package dockeris.images
 
-import dockeris.DockerisContext
 import dockeris.DockerisExtension
 import dockeris.tooling.CreateTextFileTask
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.tasks.Copy
 import org.gradle.api.tasks.TaskProvider
-import org.gradle.configurationcache.extensions.capitalized
 import org.gradle.kotlin.dsl.register
+import utils.capitalized
 import utils.taskify
 
 object DockerfileTaskFactory {
@@ -25,7 +24,7 @@ object DockerfileTaskFactory {
             project.tasks.register<Copy>(task) {
                 from(copy.source)
                 into(dir.map { it.file(copy.destination) })
-                dependsOn(dependency)
+                if (dependency != null) dependsOn(dependency)
             }
         }
         val files = builder.dependencies.map { dep ->
@@ -34,7 +33,7 @@ object DockerfileTaskFactory {
                     val task = this
                     task.content.set(dep.builder.build())
                     task.destination.set(dir.map { it.file(dep.destination) })
-                    dependsOn(dependency)
+                    if (dependency != null) dependsOn(dependency)
                 }
             }
         }
@@ -44,7 +43,9 @@ object DockerfileTaskFactory {
             val main = this
             main.content.set(builder.build())
             main.destination.set(dir.map { it.file("Dockerfile") })
-            for (task in (files + copies + dependency)) main.dependsOn(task)
+            for (task in (files + copies + dependency)) {
+                if(task !=null) main.dependsOn(task)
+            }
         }
     }
 }

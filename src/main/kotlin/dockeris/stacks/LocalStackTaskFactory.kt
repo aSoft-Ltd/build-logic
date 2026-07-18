@@ -6,8 +6,8 @@ import dockeris.images.Image
 import dockeris.tooling.CreateTextFileTask
 import org.gradle.api.Project
 import org.gradle.api.tasks.Exec
-import org.gradle.configurationcache.extensions.capitalized
 import org.gradle.kotlin.dsl.register
+import utils.capitalized
 import utils.taskify
 
 object LocalStackTaskFactory {

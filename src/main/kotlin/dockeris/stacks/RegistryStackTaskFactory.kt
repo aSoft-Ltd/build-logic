@@ -40,7 +40,7 @@ object RegistryStackTaskFactory {
                     add("--push")
                     add(".")
                 }
-                commandLine(*script.toTypedArray())
+                commandLine(listOf("sh","-c",script.joinToString(" ")))
                 workingDir(location)
                 dependsOn("create" + "-${image.name}-dockerfile".taskify())
             }
